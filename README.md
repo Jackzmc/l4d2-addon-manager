@@ -13,7 +13,7 @@ Complete addon management is implemented and is stable.
 
 ## Preview
 
-![image](https://user-images.githubusercontent.com/4030546/121757227-7dfbb680-cae2-11eb-9432-74351256ccba.png)
+![image](https://user-images.githubusercontent.com/4030546/122625448-d266df00-d06a-11eb-83b7-b126f42ccd27.png)
 
 
 ## License
