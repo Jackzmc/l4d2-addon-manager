@@ -72,7 +72,7 @@
                 </div>
                 <div class="buttons">
                     <b-button v-if="installState < 2" type="is-info" @click="install" :loading="installState == 1">Install</b-button>
-                    <p class="has-text-success" v-if="installState">Installed&nbsp;</p>
+                    <p class="has-text-success" v-if="installState == 2">Installed&nbsp;</p>
                     <a class="button is-secondary" target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
                         Open Page
                     </a>
