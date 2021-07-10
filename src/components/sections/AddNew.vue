@@ -271,11 +271,9 @@ export default {
             }
             this.installProgress.val = payload.bytes_downloaded
             if(payload.complete) {
-                this.$buefy.dialog.alert({
+                this.$buefy.toast.open({
                     message: `Successfully installed item`,
                     type: 'is-success',
-                    ariaRole: 'alertdialog',
-                    ariaModal: true
                 })
             }
         })
