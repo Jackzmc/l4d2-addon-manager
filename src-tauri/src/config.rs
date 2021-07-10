@@ -64,6 +64,9 @@ impl Downloads {
             Err(e) => return Err(e.to_string())
         }
     }
+    pub fn get(&self, index: usize) -> Option<&DownloadEntry> {
+        self.downloads.get(index)
+    }
     pub fn get_id_index(&self, id: &str) -> Option<usize> {
         for (i, item) in self.downloads.iter().enumerate() {
             if item.publishedfileid == id {

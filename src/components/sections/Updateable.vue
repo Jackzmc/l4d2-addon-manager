@@ -136,6 +136,10 @@ export default {
             let running = 0;
             let timer = setInterval(async() => {
                 if(items.length == 0 && running == 0) {
+                    this.$buefy.toast.open({
+                        message: 'All addons were updated successfully',
+                        type: 'is-success'
+                    })
                     this.$emit('refreshItems')
                     this.updating = false
                     for(const item in items) {
@@ -172,7 +176,31 @@ export default {
                 </ul>
                 </div>`,
                 confirmText: 'Mark as Updated',
-                onConfirm: () => this.$buefy.toast.open('Feature not implemented')
+                onConfirm: async() => {
+                    try {
+                        const updated = await invoke('mark_addons_updated', { items: selected })
+                        if(updated == selected.length) {
+                            this.$buefy.toast.open({
+                                message: 'All addons marked successfully',
+                                type: 'is-success'
+                            })
+                        }else{
+                            this.$buefy.toast.open({
+                                message: `${selected.length - updated} addons failed to be marked`,
+                                type: 'is-warning'
+                            })
+                        }
+                        this.$emit('refreshItems')
+                    } catch (err) {
+                        console.log(err)
+                        this.$buefy.dialog.alert({
+                            message: 'An error occurred while marking addons:<br>' + err.message,
+                            type: 'is-danger',
+                            ariaRole: 'alertdialog',
+                            ariaModal: true
+                        })
+                    }
+                }
             })
         }
     },

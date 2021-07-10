@@ -257,6 +257,41 @@ fn import_addon(
   Ok(())
 }
 
+#[tauri::command]
+fn mark_addons_updated(
+  state: tauri::State<'_, Data>,
+  items: Vec<steam_workshop_api::WorkshopItem>
+) -> Result<u32, String> {
+  let mut downloads = state.downloads.lock().expect("import_addon: Could not get downloads lock");
+  let fileids: Vec<String> = items.into_iter().map(|item| item.publishedfileid).collect();
+  let details: Vec<WorkshopItem> = match Workshop::new(None).get_published_file_details(&fileids) {
+    Ok(details) => details,
+    Err(err) => { 
+      state.logger.error("mark_addons_updated", &format!("Failed to get item details: {}\nIDS: {:?}", err, fileids));
+      return Err(err.to_string())
+    }
+  };
+  let mut updated: u32 = 0;
+  for item in details {
+    if let Some(index) = downloads.get_id_index(&item.publishedfileid) {
+      let old = downloads.get(index).unwrap();
+      state.logger.logp(logger::LogLevel::NORMAL, "mark_addons_updated", &format!("Marked {} as updated ({} -> {})", &item.title, old.time_updated, item.time_updated));
+      downloads.set_download(index, config::DownloadEntry::from_item(&item));
+      updated += 1;
+    } else {
+      state.logger.error("mark_addons_updated", &format!("File is not managed: {}", item));
+    }
+  }
+  if updated > 0 {
+    if let Err(_) = downloads.save() {
+      return Err("Could not save downloads".to_owned())
+    } else {
+      return Ok(updated)
+    }
+  }
+  Ok(0)
+}
+
 
 #[tauri::command]
 async fn download_addon(window: Window, state: tauri::State<'_, Data>, item: steam_workshop_api::WorkshopItem) -> Result<(), String> {
@@ -386,6 +421,7 @@ fn main() {
     close_splashscreen,
     import_addon,
     get_install_info,
+    mark_addons_updated
   ])
   .run(tauri::generate_context!())
   .expect("error while running tauri application");
