@@ -27,7 +27,11 @@
             <tr v-for="item in items" :key="item.publishedfileid" >
                 <td><b-checkbox v-model="selected[item.publishedfileid]" /></td>
                 <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">
-                    <a target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
+                    <a 
+                        target="_blank" 
+                        :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid"
+                        class="has-text-info"
+                    >
                         {{item.title || item.publishedfileid}}
                     </a>
                 </td>
