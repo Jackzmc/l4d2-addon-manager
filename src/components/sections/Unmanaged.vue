@@ -6,13 +6,25 @@
                 <th style="width: 40px">
                     <b-checkbox @input="onSelectAll" />
                 </th>
-                <th>Item Name</th>
+                <th>
+                    <span>Item Name</span>
+                    <div class="is-inline is-pulled-right">
+                        <b-input v-model.lazy="search.value" 
+                            placeholder="Search..." 
+                            icon="search"
+                            rounded 
+                            @blur="search.active = false"
+                            @focus="search.active = true"
+                            :size="search.active === false ? 'is-small' : ''"
+                        />
+                    </div>
+                </th>
                 <th>File Size</th>
                 <th>Last Updated</th>
             </tr>
         </thead>
         <tbody>
-            <tr v-for="item in items" :key="item.publishedfileid" >
+            <tr v-for="item in itemsFiltered" :key="item.publishedfileid" >
                 <td><b-checkbox v-model="selected[item.publishedfileid]" /></td>
                 <td @click="selected[item.publishedfileid] = !selected[item.publishedfileid]">
                     <a target="_blank" :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + item.publishedfileid">
@@ -52,15 +64,20 @@
 
 <script>
 import { invoke } from '@tauri-apps/api/tauri'
-
 import { formatBytes, formatDate } from '@/js/utils'
+import Fuse from 'fuse.js'
+
 export default {
     props: ['items'],
     data() {
         return {
             active: false,
             selected: {},
-            loading: false
+            loading: false,
+            search: {
+                active: false,
+                value: ""
+            }
         }
     },
     computed: {
@@ -79,6 +96,16 @@ export default {
                if(this.selected[item] === true) return true
            } 
            return false;
+        },
+        itemsFiltered() {
+            if(this.search.value === "") return this.items
+            const fuse = new Fuse(this.items, {
+                keys: ['title', 'author'],
+                distance: 15,
+                threshold: 0.5,
+                includeScore: true
+            })
+            return fuse.search(this.search.value).map(r => r.item)
         }
     },
     methods: {

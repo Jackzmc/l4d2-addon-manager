@@ -60,6 +60,7 @@
             <b>Action for selected items</b><br>
             <div class="buttons">
                 <b-button class="button is-info" @click="update" :disabled="updating" :loading="updating">Update</b-button>
+                <b-button class="button is-danger" @click="markUpdated" :loading="updating">Mark as Updated</b-button>
                 <!-- <a class="button is-success">Enable</a>
                 <a class="button is-danger">Disable</a> -->
             </div>
@@ -71,8 +72,9 @@
 <script>
 import { invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
-
+import Fuse from 'fuse.js'
 import { formatBytes, formatDate } from '@/js/utils'
+
 const CONCURRENT_DOWNLOADS = 3
 
 export default {
@@ -82,7 +84,11 @@ export default {
             active: false,
             selected: {},
             updates: {},
-            updating: false
+            updating: false,
+            search: {
+                active: false,
+                value: ""
+            }
         }
     },
     computed: {
@@ -98,6 +104,16 @@ export default {
                if(this.selected[item] === true) return true
            } 
            return false;
+        },
+        itemsFiltered() {
+            if(this.search.value === "") return this.items
+            const fuse = new Fuse(this.items, {
+                keys: ['title', 'author'],
+                distance: 15,
+                threshold: 0.5,
+                includeScore: true
+            })
+            return fuse.search(this.search.value).map(r => r.item)
         }
     },
     methods: {
@@ -139,7 +155,26 @@ export default {
             for(const item of this.items) {
                 this.$set(this.selected, item.publishedfileid, state)
             }
-        }  
+        },
+        markUpdated() {
+            const selected = [];
+            for(const item of this.items) {
+                if(this.selected[item.publishedfileid]) {
+                    selected.push(item)
+                }
+            }
+            this.$buefy.dialog.confirm({
+                message: `<h5 class='title is-5'>Are you sure you want to mark the following addons as updated?</h5>
+                This will not update the addons, this simply marks them as on the latest version, incase they were updated externally.<br>
+                <div class="content">
+                <ul>
+                    ${selected.map(item => `<li>${item.title}</li>`).join("")}
+                </ul>
+                </div>`,
+                confirmText: 'Mark as Updated',
+                onConfirm: () => this.$buefy.toast.open('Feature not implemented')
+            })
+        }
     },
     async created() {
         await listen('progress', ({payload}) => {

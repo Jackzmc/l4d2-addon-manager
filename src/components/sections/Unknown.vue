@@ -39,12 +39,17 @@
 
 <script>
 import { formatBytes, formatDate } from '@/js/utils'
+
 export default {
     props: ['items'],
     data() {
         return {
             active: false,
-            selected: {}
+            selected: {},
+            search: {
+                active: false,
+                value: ""
+            }
         }
     },
     computed: {
@@ -57,12 +62,6 @@ export default {
         },
         canOpen() {
             return this.items.length > 0
-        },
-        hasItemSelected() {
-           for(const item in this.selected) {
-               if(this.selected[item] === true) return true
-           } 
-           return false;
         }
     },
     methods: {
