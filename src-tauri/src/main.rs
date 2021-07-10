@@ -394,7 +394,12 @@ fn main() {
 }
 
 fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, String>{
-  let fileids = match Workshop::get_vpks_in_folder(&state.settings.gamedir.as_ref().unwrap().join("workshop").as_path()) {
+  let wsfolder = &state.settings.gamedir.as_ref().unwrap().join("workshop");
+  if !wsfolder.exists() {
+    std::fs::create_dir(wsfolder).ok();
+    return Ok(vec![]);
+  }
+  let fileids = match Workshop::get_vpks_in_folder(wsfolder.as_path()) {
       Ok(fileids) => fileids,
       Err(err) => {
       state.logger.error("get_workshop_items", &format!("Failed to get workshop items: {}", err));
@@ -407,10 +412,10 @@ fn get_workshop_items(state: &tauri::State<Data>) -> Result<Vec<WorkshopItem>, S
   }
 
   match Workshop::new(None).get_published_file_details(&fileids) {
-      Ok(details) => return Ok(details),
-      Err(err) => { 
+    Ok(details) => return Ok(details),
+    Err(err) => { 
       state.logger.error("get_workshop_items", &format!("Failed to get workshop item details: {}", err));
       return Err(err.to_string())
-      }
+    }
   };
 }
