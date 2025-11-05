@@ -32,3 +32,8 @@ export async function setGameFolder(path: string): Promise<void> {
 export async function init(): Promise<InitAppData> {
     return await tryInvoke("init")
 }
+
+
+export async function scanAddons(workshop = false): Promise<void> {
+    return await tryInvoke(workshop ? "addons_scan_workshop" : "addons_scan_managed")
+}

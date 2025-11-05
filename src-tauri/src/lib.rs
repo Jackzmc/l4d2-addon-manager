@@ -33,8 +33,11 @@ pub fn run() {
             let config = AppConfig::load(data_dir.join("config.json"));
             app.manage(Mutex::new(config));
 
-            let db = AddonStorage::new(data_dir);
-            app.manage(Mutex::new(db));
+            tauri::async_runtime::block_on(async move {
+                let db = AddonStorage::new(data_dir).await.expect("failed to create db");
+                db.run_migrations().await.expect("migrations failed");
+                app.manage(Mutex::new(db));
+            });
 
             Ok(())
         })

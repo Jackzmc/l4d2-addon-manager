@@ -5,6 +5,8 @@ pub mod commands;
 pub mod cfg;
 pub mod util;
 
+mod addons;
+
 fn main() {
     l4d2_addon_manager_lib::run()
 }
