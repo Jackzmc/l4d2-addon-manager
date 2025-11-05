@@ -1,7 +1,10 @@
+use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::time::SystemTime;
 use bitflags::bitflags;
+use chrono::DateTime;
+use l4d2_addon_parser::AddonInfo;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use sqlx::{ConnectOptions, Pool, Sqlite};
@@ -16,6 +19,13 @@ pub struct WorkshopItem {
     title: String
 }
 
+impl WorkshopItem {
+    /// Link to the steam workshop
+    pub fn link(&self) -> String {
+        format!("http://www.steamcommunity.com/sharedfiles/filedetails/?id={}", self.publishedfileid)
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AddonFlags(pub u32);
 bitflags! {
@@ -24,22 +34,45 @@ bitflags! {
         const Workshop = 0b0001;
         /// Is addon a campaign
         const Campaign = 0b0010;
+        /// Changes a survivor
+        const Survivor = 0b0100;
     }
 }
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Addon {
+pub struct AddonData {
+    /// Name of the file addon was found in
     pub filename: String,
+    /// When addon file was last updated
     pub updated_at: chrono::DateTime<Utc>,
+    /// When addon file was created
     pub created_at: chrono::DateTime<Utc>,
+    /// The size in bytes of the addon file
     pub file_size: i64,
+
+    /// The flags parsed from the addon
     pub flags: AddonFlags,
-    pub workshop_id: Option<i64>
+    /// Title of addon
+    pub title: String,
+    /// Author of addon
+    pub author: Option<String>,
+    /// Version of addon
+    pub version: String,
+    /// A short description of addon
+    pub tagline: Option<String>,
+
+    /// Extracted from either addoninfo.txt url or filename
+    pub workshop_id: Option<i64>,
 }
+
+
 
 #[derive(Serialize)]
 pub struct AddonEntry {
-    pub addon: Addon,
+    /// Info about addon and its file
+    pub addon: AddonData,
+    /// If a workshop entry is linked, its contents here
     pub workshop_info: Option<WorkshopItem>,
+    /// A list of user added tags for entry
     pub tags: Vec<String>,
 }
 
@@ -53,7 +86,6 @@ impl AddonStorage {
     pub async fn new(store_folder: PathBuf) -> Result<Self, String> {
         std::fs::create_dir_all(&store_folder).map_err(|e| e.to_string())?;
         let db_path = store_folder.join("addon-manager.db");
-        std::env::set_var("DATABASE_URL", format!("sqlite://{}", db_path.display()));
         let connection_options = sqlx::sqlite::SqliteConnectOptions::new()
             .filename(&db_path)
             .create_if_missing(true)
@@ -90,14 +122,18 @@ impl AddonStorage {
                 } else {
                     vec![]
                 };
-            
+
                 AddonEntry {
-                    addon: Addon {
+                    addon: AddonData {
                         filename: entry.filename,
                         updated_at: entry.updated_at,
                         created_at: entry.created_at,
                         file_size: entry.file_size,
                         flags: AddonFlags(entry.flags),
+                        title: "".to_string(),
+                        author: None,
+                        version: "".to_string(),
+                        tagline: None,
                         workshop_id: entry.workshop_id,
                     },
                     workshop_info: None,
@@ -105,6 +141,35 @@ impl AddonStorage {
                 }
             })
             .collect::<Vec<AddonEntry>>())
+    }
+
+    pub async fn get_by_filename(&self, filename: &str) -> Result<Option<AddonWithTagsList>, sqlx::Error> {
+        sqlx::query_as::<_, AddonWithTagsList>(r#"
+                select addons.*, GROUP_CONCAT(tags.tag) tags
+                from addons
+                left join addon_tags tags on tags.filename = addons.filename
+                where addons.filename = ?
+                group by addons.filename
+            "#
+        )
+               .bind(filename)
+               .fetch_optional(&self.pool)
+               .await
+    }
+
+    pub async fn get_by_pk(&self, title: &str, version: &str) -> Result<Option<AddonWithTagsList>, sqlx::Error> {
+        sqlx::query_as::<_, AddonWithTagsList>(r#"
+                select addons.*, GROUP_CONCAT(tags.tag) tags
+                from addons
+                left join addon_tags tags on tags.filename = addons.filename
+                where addons.title = ? AND addons.version = ?
+                group by addons.filename
+            "#
+        )
+            .bind(title)
+            .bind(version)
+            .fetch_optional(&self.pool)
+            .await
     }
 
     pub async fn scan(&mut self, path_buf: PathBuf) -> Result<(), String> {
@@ -132,12 +197,16 @@ impl AddonStorage {
         // TODO: check if has workshop ID
 
         let entry = AddonEntry {
-            addon: Addon {
+            addon: AddonData {
                 filename: file_name.to_string_lossy().to_string(),
                 updated_at: metadata.modified().unwrap().into(),
                 created_at: metadata.created().unwrap().into(),
                 file_size: metadata.size() as i64,
                 flags,
+                title: "".to_string(),
+                author: None,
+                version: "".to_string(),
+                tagline: None,
                 workshop_id: None,
             },
             tags: vec![],
@@ -145,6 +214,35 @@ impl AddonStorage {
         };
 
         self._add_entry(entry).await?;
+        Ok(())
+    }
+
+    pub async fn update_entry(&mut self, filename: &str, file_meta: Metadata, addon: AddonInfo) -> Result<(), sqlx::Error> {
+        let last_modified: DateTime<Utc> = file_meta.modified().unwrap().into();
+        let size = file_meta.size() as i64;
+        sqlx::query!(
+            "UPDATE addons SET file_size = ?, updated_at = ?, title = ?, version = ? WHERE filename = ?",
+            size,
+            last_modified,
+            addon.title,
+            addon.version,
+            filename
+        )
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+
+    pub async fn update_entry_pk(&mut self, title: &str, version: &str, new_filename: &str) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE addons SET filename = ? WHERE title = ? AND version = ?",
+            new_filename,
+            title,
+            version
+        )
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -162,3 +260,4 @@ impl AddonStorage {
         Ok(())
     }
 }
+

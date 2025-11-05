@@ -2,6 +2,11 @@
 <table class="table is-fullwidth has-sticky-header">
     <thead>
         <tr>
+            <td>
+                <button class="button">Rescan</button>
+            </td>
+        </tr>
+        <tr>
             <th>File Name</th>
             <th>File Size</th>
             <th>Info</th>
