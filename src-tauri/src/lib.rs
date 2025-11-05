@@ -8,11 +8,12 @@ use log::debug;
 use tauri::async_runtime::Mutex;
 use tauri::{Emitter, Manager};
 use tauri_plugin_store::StoreExt;
+use crate::addons::AddonStorage;
 
 pub mod cfg;
 mod commands;
 pub mod util;
-
+mod addons;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,22 +24,17 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_log::Builder::new().build())
-        .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
-            let cfg_path = app.path().app_config_dir().unwrap().join("config.json");
-            let config = AppConfig::load(cfg_path);
-            if config.addons_folder.is_some() {
-                debug!("addon folder set, skipping setup");
-                app.emit_str("set_route", "/app/addons/manual".to_string()).unwrap();
-            } else {
-                debug!("addon folder not set, showing setup");
-                app.emit_str("set_route", "/".to_string()).unwrap();
-            }
+            let data_dir = app.path().app_local_data_dir().unwrap();
 
+            let config = AppConfig::load(data_dir.join("config.json"));
             app.manage(Mutex::new(config));
+
+            let db = AddonStorage::new(data_dir);
+            app.manage(Mutex::new(db));
 
             Ok(())
         })
@@ -47,8 +43,9 @@ pub fn run() {
             cmd_config::choose_game_folder,
             cmd_config::set_game_folder,
             cmd_addons::addons_list_managed,
+            cmd_addons::addons_scan_managed,
             cmd_addons::addons_list_workshop,
-
+            cmd_addons::addons_scan_workshop
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
