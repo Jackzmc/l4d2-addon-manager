@@ -6,7 +6,7 @@ import Loading from '../pages/Loading.vue'
 
 const routes = [
   { path: '/', component: Loading },
-  { path: '/setup', component: Setup },
+  { path: '/setup', component: Setup, name: "setup" },
   { 
     path: '/app', 
     component: MainView,
