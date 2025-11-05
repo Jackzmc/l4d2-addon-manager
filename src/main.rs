@@ -2,7 +2,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 pub mod commands;
+pub mod cfg;
+pub mod util;
 
 fn main() {
-    l4d2_workshop_manager_v2_lib::run()
+    l4d2_addon_manager_lib::run()
 }
