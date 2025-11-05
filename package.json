@@ -10,6 +10,7 @@
     "tauri": "WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri"
   },
   "dependencies": {
+    "@cityssm/bulma-sticky-table": "^3.0.1",
     "@kyvg/vue3-notification": "^3.4.2",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-log": "~2.7.1",

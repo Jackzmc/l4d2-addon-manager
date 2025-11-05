@@ -3,7 +3,8 @@ import App from "./App.vue";
 import { router } from "./router/index.ts";
 import Notifications from '@kyvg/vue3-notification'
 
-import 'bulma/css/bulma.min.css'
+import '@cityssm/bulma-sticky-table/bulma-with-sticky-table.css'
+// import 'bulma/css/bulma.min.css'
 
 createApp(App)
     .use(router)

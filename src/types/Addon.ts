@@ -17,7 +17,7 @@ export interface WorkshopItem {
     title: string
 }
 
-export enum AddonFlags {
+export const enum AddonFlags {
     None = 0,
     Workshop = 1,
     Campaign = 2

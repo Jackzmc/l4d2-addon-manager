@@ -1,5 +1,5 @@
 <template>
-    <div class="columns">
+    <div class="columns is-gapless">
         <div class="column is-3" >
             <Sidebar />
         </div>
