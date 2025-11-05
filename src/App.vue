@@ -1,14 +1,18 @@
 <template>
+  {{ size }}
   <notifications position="bottom right" :speed=1500 />
   <router-view />
+
 </template>
 
 <script setup lang="ts">
 import { listen } from '@tauri-apps/api/event';
-import { onBeforeMount } from 'vue';
+import { onBeforeMount, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter()
+
+const size = ref([0, 0])
 
 onBeforeMount(async() => {
   console.debug("listening")
@@ -17,6 +21,11 @@ onBeforeMount(async() => {
     const route = event.payload
     router.push(route)
   })
+})
+
+  size.value = [window.innerWidth, window.innerHeight]
+window.addEventListener("resize", () => {
+  size.value = [window.innerWidth, window.innerHeight]
 })
 </script>
 

@@ -11,12 +11,6 @@
 
 <script setup lang="ts">
 import Sidebar from '@/components/Sidebar.vue'
-import { onMounted } from 'vue';
-import { scanAddons } from '../js/tauri.ts';
-
-onMounted(() => {
-    scanAddons(false)
-})
 </script>
 
 <style>

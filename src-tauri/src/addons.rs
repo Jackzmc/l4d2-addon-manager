@@ -8,6 +8,7 @@ use sqlx::{ConnectOptions, Pool, Sqlite};
 use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use tauri::async_runtime::Mutex;
+use crate::models::addon::AddonWithTagsList;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorkshopItem {
@@ -16,7 +17,7 @@ pub struct WorkshopItem {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AddonFlags(u32);
+pub struct AddonFlags(pub u32);
 bitflags! {
     impl AddonFlags: u32 {
         /// Is addon in the 'workshop' folder
@@ -26,15 +27,20 @@ bitflags! {
     }
 }
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AddonEntry {
+pub struct Addon {
     pub filename: String,
     pub updated_at: chrono::DateTime<Utc>,
     pub created_at: chrono::DateTime<Utc>,
     pub file_size: i64,
-    pub workshop_info: Option<WorkshopItem>,
     pub flags: AddonFlags,
-    #[serde(default)]
-    pub tags: Vec<String>
+    pub workshop_id: Option<i64>
+}
+
+#[derive(Serialize)]
+pub struct AddonEntry {
+    pub addon: Addon,
+    pub workshop_info: Option<WorkshopItem>,
+    pub tags: Vec<String>,
 }
 
 pub struct AddonStorage {
@@ -67,6 +73,40 @@ impl AddonStorage {
         Ok(())
     }
 
+    pub async fn list(&self, flags: AddonFlags) -> Result<Vec<AddonEntry>, sqlx::Error> {
+        Ok(sqlx::query_as::<_, AddonWithTagsList>(r#"
+                select addons.*, GROUP_CONCAT(tags.tag) tags
+                from addons
+                left join addon_tags tags on tags.filename = addons.filename
+                group by addons.filename
+            "#
+        )
+            .bind(flags.0)
+            .fetch_all(&self.pool).await?
+            .into_iter().map(|entry| {
+                // Skip empty strings as they have no tags
+                let tags: Vec<String> = if entry.tags != "" {
+                    entry.tags.split(',').map(|s| s.to_string()).collect()
+                } else {
+                    vec![]
+                };
+            
+                AddonEntry {
+                    addon: Addon {
+                        filename: entry.filename,
+                        updated_at: entry.updated_at,
+                        created_at: entry.created_at,
+                        file_size: entry.file_size,
+                        flags: AddonFlags(entry.flags),
+                        workshop_id: entry.workshop_id,
+                    },
+                    workshop_info: None,
+                    tags
+                }
+            })
+            .collect::<Vec<AddonEntry>>())
+    }
+
     pub async fn scan(&mut self, path_buf: PathBuf) -> Result<(), String> {
         info!("Scanning addons at {}", path_buf.display());
         let dir = std::fs::read_dir(path_buf).map_err(|e| e.to_string())?;
@@ -92,13 +132,16 @@ impl AddonStorage {
         // TODO: check if has workshop ID
 
         let entry = AddonEntry {
-            filename: file_name.to_string_lossy().to_string(),
-            updated_at: metadata.modified().unwrap().into(),
-            created_at: metadata.created().unwrap().into(),
-            file_size: metadata.size() as i64,
-            workshop_info: None,
-            flags,
+            addon: Addon {
+                filename: file_name.to_string_lossy().to_string(),
+                updated_at: metadata.modified().unwrap().into(),
+                created_at: metadata.created().unwrap().into(),
+                file_size: metadata.size() as i64,
+                flags,
+                workshop_id: None,
+            },
             tags: vec![],
+            workshop_info: None,
         };
 
         self._add_entry(entry).await?;
@@ -108,14 +151,14 @@ impl AddonStorage {
     async fn _add_entry(&mut self, entry: AddonEntry) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO addons (filename, updated_at, created_at, file_size, flags, workshop_id) VALUES (?, ?, ?, ?, ?, ?)",
-            entry.filename,
-            entry.updated_at,
-            entry.created_at,
-            entry.file_size,
-            entry.flags.0,
+            entry.addon.filename,
+            entry.addon.updated_at,
+            entry.addon.created_at,
+            entry.addon.file_size,
+            entry.addon.flags.0,
             None::<i64>
         ).execute(&self.pool).await?;
-        info!("Added entry {} (flags={}) (ws_id={:?})", entry.filename, entry.flags.0, None::<i64>);
+        info!("Added entry {} (flags={}) (ws_id={:?})", entry.addon.filename, entry.addon.flags.0, None::<i64>);
         Ok(())
     }
 }

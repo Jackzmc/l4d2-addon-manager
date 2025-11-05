@@ -1,11 +1,12 @@
 use log::debug;
 use tauri::State;
-use crate::addons::AddonStorageContainer;
+use crate::addons::{AddonEntry, AddonFlags, AddonStorageContainer};
 use crate::cfg::AppConfigContainer;
 
 #[tauri::command]
-pub async fn addons_list_managed() -> Result<Vec<()>, String> {
-    Ok(vec![])
+pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>) -> Result<Vec<AddonEntry>, String> {
+    let addons = addons.lock().await;
+    addons.list(AddonFlags(0)).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

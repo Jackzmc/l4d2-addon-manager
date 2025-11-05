@@ -1,5 +1,5 @@
 import { invoke, InvokeArgs, InvokeOptions } from '@tauri-apps/api/core'
-import { Addon } from '../types/Addon.ts';
+import { Addon, AddonEntry } from '../types/Addon.ts';
 import { notify } from '@kyvg/vue3-notification';
 import { InitAppData } from '../types/App.ts';
 
@@ -17,8 +17,8 @@ async function tryInvoke<T>(cmd: string, args?: InvokeArgs, options?: InvokeOpti
     }
 }
 
-export async function getManagedAddons(): Promise<Addon[]> {
-    return await tryInvoke("get_managed_addons")
+export async function listAddons(workshop = false): Promise<AddonEntry[]> {
+    return await tryInvoke(workshop ? "addons_list_workshop" : "addons_list_managed")
 }
 
 export async function getGameFolder(): Promise<string | null> {
