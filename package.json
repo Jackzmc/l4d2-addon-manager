@@ -1,0 +1,31 @@
+{
+  "name": "l4d2-addon-manager",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri"
+  },
+  "dependencies": {
+    "@kyvg/vue3-notification": "^3.4.2",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-log": "~2.7.1",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-sql": "~2.3.1",
+    "bulma": "^1.0.4",
+    "dialog": "^0.3.1",
+    "store": "^2.0.12",
+    "vue": "^3.5.13",
+    "vue-router": "^4.6.3"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3",
+    "vue-tsc": "^2.1.10"
+  }
+}

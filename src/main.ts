@@ -1,0 +1,11 @@
+import { createApp } from "vue";
+import App from "./App.vue";
+import { router } from "./router/index.ts";
+import Notifications from '@kyvg/vue3-notification'
+
+import 'bulma/css/bulma.min.css'
+
+createApp(App)
+    .use(router)
+    .use(Notifications)
+    .mount("#app");

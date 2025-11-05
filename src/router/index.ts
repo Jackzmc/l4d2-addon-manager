@@ -1,0 +1,24 @@
+import { createRouter, createWebHashHistory } from 'vue-router'
+
+import Setup from '../pages/Setup.vue'
+import MainView from '../components/MainView.vue'
+import Loading from '../pages/Loading.vue'
+
+const routes = [
+  { path: '/', component: Loading },
+  { path: '/setup', component: Setup },
+  { 
+    path: '/app', 
+    component: MainView,
+    children: [
+      { name: "addons-manual", path: 'addons/manual', component: () => import('@/pages/ManagedAddons.vue') },
+      { name: "addons-workshop", path: 'addons/workshop',  component: () => import('@/pages/ManagedAddons.vue')  },
+    ]
+  }
+]
+
+export const router = createRouter({
+  history: createWebHashHistory(),
+  linkActiveClass: "is-active",
+  routes,
+})
