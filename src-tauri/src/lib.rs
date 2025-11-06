@@ -26,7 +26,11 @@ pub fn run() {
                 .level(tauri_plugin_log::log::LevelFilter::Info)
                 .build(),
         )
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(tauri_plugin_log::Builder::new()
+            // Set default level to INFO, but our crate TRACE
+            .level(log::LevelFilter::Info)
+            .level_for("l4d2_addon_manager_lib", log::LevelFilter::Trace)
+            .build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())

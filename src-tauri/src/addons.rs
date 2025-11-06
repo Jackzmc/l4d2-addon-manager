@@ -8,11 +8,11 @@ use chrono::DateTime;
 use l4d2_addon_parser::AddonInfo;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use sqlx::{ConnectOptions, Pool, Sqlite};
+use sqlx::{ConnectOptions, FromRow, Pool, Row, Sqlite};
 use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use tauri::async_runtime::Mutex;
-use crate::models::addon::AddonWithTagsList;
+use crate::models::addon::{FullAddonWithTagsList, PartialAddon};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorkshopItem {
@@ -32,14 +32,26 @@ pub struct AddonFlags(pub u32);
 bitflags! {
     impl AddonFlags: u32 {
         /// Is addon in the 'workshop' folder
-        const Workshop = 0b0001;
+        const WORKSHOP = 0b0000001;
         /// Is addon a campaign
-        const Campaign = 0b0010;
+        const CAMPAIGN = 0b0000010;
         /// Changes a survivor
-        const Survivor = 0b0100;
+        const SURVIVOR = 0b0000100;
+        /// Changes / adds a script
+        const SCRIPT = 0b0001000;
+        /// Includes a texture change
+        const SKIN = 0b0010000;
+        /// Weapon change
+        const WEAPON = 0b0100000;
     }
 }
-#[derive(Debug, Serialize, Deserialize)]
+// Needed for sqlx to load
+impl From<u32> for AddonFlags {
+    fn from(flags: u32) -> Self {
+        AddonFlags(flags)
+    }
+}
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct AddonData {
     /// Name of the file addon was found in
     pub filename: String,
@@ -50,6 +62,7 @@ pub struct AddonData {
     /// The size in bytes of the addon file
     pub file_size: i64,
 
+    #[sqlx(try_from = "u32")]
     /// The flags parsed from the addon
     pub flags: AddonFlags,
     /// Title of addon
@@ -107,7 +120,7 @@ impl AddonStorage {
     }
 
     pub async fn list(&self, flags: AddonFlags) -> Result<Vec<AddonEntry>, sqlx::Error> {
-        Ok(sqlx::query_as::<_, AddonWithTagsList>(r#"
+        Ok(sqlx::query_as::<_, FullAddonWithTagsList>(r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
                 from addons
                 left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
@@ -125,18 +138,7 @@ impl AddonStorage {
                 };
 
                 AddonEntry {
-                    addon: AddonData {
-                        filename: entry.filename,
-                        updated_at: entry.updated_at,
-                        created_at: entry.created_at,
-                        file_size: entry.file_size,
-                        flags: AddonFlags(entry.flags),
-                        title: "".to_string(),
-                        author: None,
-                        version: "".to_string(),
-                        tagline: None,
-                        workshop_id: entry.workshop_id,
-                    },
+                    addon: entry.data,
                     workshop_info: None,
                     tags
                 }
@@ -144,9 +146,14 @@ impl AddonStorage {
             .collect::<Vec<AddonEntry>>())
     }
 
-    pub async fn get_by_filename(&self, filename: &str) -> Result<Option<AddonWithTagsList>, sqlx::Error> {
-        sqlx::query_as::<_, AddonWithTagsList>(r#"
-                select addons.*, GROUP_CONCAT(tags.tag) tags
+    pub async fn get_by_filename(&self, filename: &str) -> Result<Option<PartialAddon>, sqlx::Error> {
+        sqlx::query_as::<_, PartialAddon>(r#"
+                select
+                    addons.filename,
+                    addons.updated_at, addons.created_at,
+                    addons.file_size, addons.flags,
+                    addons.workshop_id,
+                    GROUP_CONCAT(tags.tag) tags
                 from addons
                 left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
                 where addons.filename = ?
@@ -158,9 +165,14 @@ impl AddonStorage {
                .await
     }
 
-    pub async fn get_by_pk(&self, title: &str, version: &str) -> Result<Option<AddonWithTagsList>, sqlx::Error> {
-        sqlx::query_as::<_, AddonWithTagsList>(r#"
-                select addons.*, GROUP_CONCAT(tags.tag) tags
+    pub async fn get_by_pk(&self, title: &str, version: &str) -> Result<Option<PartialAddon>, sqlx::Error> {
+        sqlx::query_as::<_, PartialAddon>(r#"
+                select
+                    addons.filename,
+                    addons.updated_at, addons.created_at,
+                    addons.file_size, addons.flags,
+                    addons.workshop_id,
+                    GROUP_CONCAT(tags.tag) tags
                 from addons
                 left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
                 where addons.title = ? AND addons.version = ?
@@ -204,17 +216,24 @@ impl AddonStorage {
         Ok(affected > 0)
     }
 
-    pub async fn add_entry(&mut self, entry: AddonEntry) -> Result<(), sqlx::Error> {
+    pub async fn add_entry(&mut self, addon: AddonData) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "INSERT INTO addons (filename, updated_at, created_at, file_size, flags, workshop_id) VALUES (?, ?, ?, ?, ?, ?)",
-            entry.addon.filename,
-            entry.addon.updated_at,
-            entry.addon.created_at,
-            entry.addon.file_size,
-            entry.addon.flags.0,
-            None::<i64>
+            r#"INSERT INTO addons
+                (filename, updated_at, created_at, file_size, title, author, version, tagline, flags, workshop_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+            addon.filename,
+            addon.updated_at,
+            addon.created_at,
+            addon.file_size,
+            addon.title,
+            addon.author,
+            addon.version,
+            addon.tagline,
+            addon.flags.0,
+            addon.workshop_id
         ).execute(&self.pool).await?;
-        info!("Added entry {} (flags={}) (ws_id={:?})", entry.addon.filename, entry.addon.flags.0, None::<i64>);
+        info!("Added entry {} (flags={}) (ws_id={:?}) (title={})", addon.filename, addon.flags.0, addon.workshop_id, addon.title);
         Ok(())
     }
 }

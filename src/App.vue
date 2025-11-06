@@ -1,5 +1,4 @@
 <template>
-  {{ size }}
   <notifications position="bottom right" :speed="5000" />
   <router-view />
 
@@ -12,8 +11,6 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter()
 
-const size = ref([0, 0])
-
 onBeforeMount(async() => {
   console.debug("listening")
   await listen<string>("set_route", (event) => {
@@ -21,11 +18,6 @@ onBeforeMount(async() => {
     const route = event.payload
     router.push(route)
   })
-})
-
-  size.value = [window.innerWidth, window.innerHeight]
-window.addEventListener("resize", () => {
-  size.value = [window.innerWidth, window.innerHeight]
 })
 </script>
 

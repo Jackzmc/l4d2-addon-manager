@@ -2194,10 +2194,11 @@ dependencies = [
 
 [[package]]
 name = "l4d2_addon_parser"
-version = "1.0.1"
-source = "git+https://git.jackz.me/jackz/l4d2-addon-parser.git#2f3017268def92b38ed7e53bda0e364f1e90c203"
+version = "1.0.2"
+source = "git+https://git.jackz.me/jackz/l4d2-addon-parser.git#df8799b717355677d716f7bdb5dd5c5986a06872"
 dependencies = [
  "keyvalues-serde",
+ "log",
  "serde",
  "sourcepak",
 ]

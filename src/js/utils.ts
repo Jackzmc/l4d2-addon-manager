@@ -19,8 +19,7 @@ export function formatSize(bytes: number, si = false, dp = 1) {
   return (dp > 0 ? bytes.toFixed(dp) : Math.round(bytes)) + ' ' + units[u];
 }
 
-export function getRelDate(timestamp: number) : string {
-  const date = timestamp ? new Date(timestamp * 1000) : new Date();
+export function getRelDate(date: Date) : string {
   const secondsDiff = ((Date.now() - date.getTime()) / 1000);
   const dayDiff = Math.floor(secondsDiff / 86400);
   const monthsDiff = Math.round(dayDiff / 30)

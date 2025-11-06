@@ -2,7 +2,8 @@ use std::collections::VecDeque;
 use std::fmt::Display;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::thread::JoinHandle;
 use chrono::{DateTime, Utc};
 use l4d2_addon_parser::{AddonInfo, L4D2Addon, MissionInfo};
@@ -10,7 +11,7 @@ use log::{debug, error, info};
 use tauri::async_runtime::{channel, Receiver, Sender};
 use tauri::State;
 use crate::addons::{AddonData, AddonEntry, AddonFlags, AddonStorageContainer};
-use crate::scan::ScanError::{DBError, NewEntryError, ParseError, UpdateError, UpdateRenameError};
+use crate::scan::ScanError::{DBError, FileError, NewEntryError, ParseError, UpdateError, UpdateRenameError};
 
 pub struct AddonScanner {
     thread: Option<JoinHandle<()>>,
@@ -41,10 +42,12 @@ impl AddonScanner {
             self._scan_dir(&path).expect("failed to scan dir");
 
             info!("Done. Starting addon scan thread");
+            let counter = Arc::new(ScanCounter::default());
             let thread = {
                 let queue = queue;
                 let addons = self.addons.clone();
-                std::thread::spawn(move || scan_thread(queue, addons))
+                let counter = counter.clone();
+                std::thread::spawn(move || scan_thread(queue, addons, counter))
             };
             self.thread = Some(thread);
         }
@@ -83,26 +86,41 @@ impl AddonScanner {
     }
 }
 
-pub fn scan_thread(mut queue: Arc<Mutex<VecDeque<PathBuf>>>, addons: AddonStorageContainer) {
-    let mut errors = 0;
+#[derive(Default, Clone)]
+struct ScanCounter {
+    total: Arc<AtomicU32>,
+    added: Arc<AtomicU32>,
+    errors: Arc<AtomicU32>
+}
+type ScanCounterContainer = Mutex<ScanCounter>;
+
+fn scan_thread(queue: Arc<Mutex<VecDeque<PathBuf>>>, addons: AddonStorageContainer, counter: Arc<ScanCounter>) {
     loop {
         let item = {
             let mut queue = queue.lock().unwrap();
             if queue.len() == 0 { break; }
             queue.pop_back().unwrap()
         };
+
         let addons = addons.clone();
+        let counter = counter.clone();
         tauri::async_runtime::block_on(async move {
-            if let Err(e) = scan_file(&item, addons).await {
-                errors += 1;
-                let filename = item.file_name().unwrap().to_string_lossy();
-                error!("SCAN FAILED FOR \"{}\": {}", filename, e);
+            counter.total.fetch_add(1, Ordering::Relaxed);
+            match scan_file(&item, addons).await {
+                Ok(ScanResult::Added) => {
+                    counter.added.fetch_add(1, Ordering::Relaxed);
+                },
+                Err(e) => {
+                    let filename = item.file_name().unwrap().to_string_lossy();
+                    error!("SCAN ERROR FOR \"{}\": {}", filename, e);
+                    counter.errors.fetch_add(1, Ordering::Relaxed);
+                },
+                _ => {}
             }
         });
     }
-
-    info!("Queue is empty, thread is ending");
-
+    // FIXME: why is it 0.
+    info!("ADDON SCAN COMPLETE. {} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
     // TODO: send notification to UI
 }
 
@@ -128,8 +146,15 @@ impl Display for ScanError {
     }
 }
 
-pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<(), ScanError> {
-    let meta = path.metadata().unwrap();
+pub enum ScanResult {
+    Updated,
+    Renamed,
+    Added,
+    NoAction,
+    Error(ScanError)
+}
+pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<ScanResult, ScanError> {
+    let meta = path.metadata().map_err(|e| FileError(e))?;
     let filename = path.file_name().unwrap().to_str().unwrap();
     let addon_entry = {
         let addons = addons.lock().await;
@@ -142,7 +167,7 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
 
     let mut should_update = false;
     if let Some(entry) = addon_entry {
-        let last_modified = meta.modified().unwrap();
+        let last_modified = meta.modified().map_err(|e| FileError(e))?;
         // Check if file has been modified since scanned
         should_update = <DateTime<Utc>>::from(last_modified) > entry.updated_at;
         if <DateTime<Utc>>::from(last_modified) > entry.updated_at {
@@ -150,9 +175,9 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
             debug!("file has changed, updating entry {:?}", path);
             addons.update_entry(filename, meta, info).await
                 .map_err(|e| UpdateError(e))?;
-            return Ok(())
+            return Ok(ScanResult::Updated)
         }
-        // return Ok(())
+        return Ok(ScanResult::NoAction)
     }
 
     let mut addons = addons.lock().await;
@@ -163,39 +188,53 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
         if addons.update_entry_pk(filename, version, title).await
             .map_err(|e| UpdateRenameError(e))?
         {
-            return Ok(())
+            return Ok(ScanResult::Renamed)
         }
     }
 
+    let flags = get_addon_flags(&info);
+
     // Treat file as new now
-    let entry = AddonEntry {
-        addon: AddonData {
+    let data = AddonData {
             filename: filename.to_string(),
-            updated_at: meta.modified().unwrap().into(),
-            created_at: meta.created().unwrap().into(),
+            updated_at: meta.modified().map_err(|e| FileError(e))?.into(),
+            created_at: meta.created().map_err(|e| FileError(e))?.into(),
             file_size: meta.size() as i64,
-            flags: AddonFlags::empty(),
+            flags,
             title: info.title.unwrap(),
             author: info.author,
             version: info.version.unwrap(),
             tagline: None, //info.tagline,
-            workshop_id: None,
-        },
-        workshop_info: None,
-        // New entry will not have any tags
-        tags: vec![],
+            workshop_id: None
     };
     // Add to DB
-    addons.add_entry(entry).await
+    addons.add_entry(data).await
         .map_err(|e| NewEntryError(e))?;
 
-    Ok(())
+    Ok(ScanResult::Added)
 }
 
 pub async fn parse_addon(path: &PathBuf) -> Result<(AddonInfo, Option<MissionInfo>), l4d2_addon_parser::Error> {
     let mut addon = L4D2Addon::from_path(&path)?;
     let info = addon.info()?
-        .ok_or(l4d2_addon_parser::Error::VPKError("No addoninfo.txt".to_string()))?;
+        .ok_or(l4d2_addon_parser::Error::VPKError("Bad addon: No addoninfo.txt found in addon".to_string()))?;
     let map = addon.missions()?;
     Ok((info, map))
+}
+
+fn get_addon_flags(info: &AddonInfo) -> AddonFlags {
+    let mut flags = AddonFlags::empty();
+    if info.is_map {
+        flags |= AddonFlags::CAMPAIGN;
+    }
+    if info.is_survivor {
+        flags |= AddonFlags::SURVIVOR;
+    }
+    if info.is_script {
+        flags |= AddonFlags::SCRIPT;
+    }
+    if info.is_weapon {
+        flags |= AddonFlags::WEAPON;
+    }
+    flags
 }
