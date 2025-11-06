@@ -18,6 +18,7 @@ input.checkbox.large[type='checkbox']:checked:after {
 } */
 input.checkbox.large[type='checkbox'] {
     transform: scale(2);
+    vertical-align: middle;
 }
 
 .row td {
