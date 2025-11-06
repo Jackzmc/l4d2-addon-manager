@@ -19,11 +19,11 @@
         </tr>
         <tr>
             <th>
-                <input type="checkbox" class="checkbox" @input="toggleSelectAll" />
+                <input type="checkbox" class="checkbox large" @input="toggleSelectAll" />
             </th>
-            <th>File Name</th>
-            <th>File Size</th>
-            <th>Types</th>
+            <th>Addon</th>
+            <th>Size</th>
+            <th>Content</th>
         </tr>
     </thead>
     <tbody>

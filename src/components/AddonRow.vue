@@ -1,7 +1,7 @@
 <template>
-<tr>
+<tr class="row">
     <td>
-        <input type="checkbox" class="checkbox" @change="emit('select')" :checked="selected" />
+        <input type="checkbox" class="checkbox large" @change="emit('select')" :checked="selected" />
     </td>
     <td>
         <a @click="showDetails">{{ entry.addon.title }}</a>
