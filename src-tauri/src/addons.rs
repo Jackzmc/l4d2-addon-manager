@@ -73,7 +73,8 @@ pub struct AddonData {
     pub version: String,
     /// A short description of addon
     pub tagline: Option<String>,
-
+    /// Comma separated list of chapter ids, if map
+    pub chapter_ids: Option<String>,
     /// Extracted from either addoninfo.txt url or filename
     pub workshop_id: Option<i64>,
 }

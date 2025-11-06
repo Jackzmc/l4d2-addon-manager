@@ -11,6 +11,7 @@ create table addons
     author text,
     version text not null,
     tagline text,
+    chapter_ids text, -- comma separated list of coop chapter ids, if set
     flags integer not null default 0, -- Bit field
 
     workshop_id integer, -- extracted from addoninfo.txt or filename

@@ -163,7 +163,7 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
             .map_err(|e| DBError(e))?
     };
 
-    let (info, missions) = parse_addon(&path).await
+    let (info, chapter_ids) = parse_addon(&path).await
         .map_err(|e| ParseError(e))?;
 
     let mut should_update = false;
@@ -206,7 +206,8 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
             title: info.title.unwrap(),
             author: info.author,
             version: info.version.unwrap(),
-            tagline: None, //info.tagline,
+            tagline: info.tagline,
+            chapter_ids: chapter_ids.map(|c| c.join(",")),
             workshop_id: ws_id
     };
     // TODO: add missions
@@ -217,13 +218,18 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
     Ok(ScanResult::Added)
 }
 
-pub async fn parse_addon(path: &PathBuf) -> Result<(AddonInfo, Option<MissionInfo>), l4d2_addon_parser::Error> {
+pub async fn parse_addon(path: &PathBuf) -> Result<(AddonInfo, Option<Vec<String>>), l4d2_addon_parser::Error> {
     let mut addon = L4D2Addon::from_path(&path)?;
     let info = addon.info()?
         .ok_or(l4d2_addon_parser::Error::VPKError("Bad addon: No addoninfo.txt found in addon".to_string()))?;
-    let map = addon.missions()?;
 
-    Ok((info, map))
+    let mut chapter_ids: Option<Vec<String>> = None;
+    if let Some(mission) = addon.missions()? {
+        if let Some(coop) = mission.modes.get("coop") {
+            chapter_ids = Some(coop.iter().map(|entry| entry.1.map.clone()).collect());
+        }
+    }
+    Ok((info, chapter_ids))
 }
 
 // Can guarantee id is 4 digits at minimum.
