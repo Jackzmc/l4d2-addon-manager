@@ -22,4 +22,8 @@ onMounted(() => {
     scanAddons(false)
     refresh()
 })
+
+defineExpose({
+    refresh
+})
 </script>

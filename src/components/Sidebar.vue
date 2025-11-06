@@ -2,7 +2,7 @@
 <nav class="panel is-primary sidebar">
     <p class="panel-heading">L4D2 Addon Manager</p>
     <router-link class="panel-block" :to="{ name: 'addons-manual' }">
-        Managed Addons
+        Managed Addons <button class="button is-link is-small ml-1" @click="refreshList">RefreshIcon</button>
     </router-link>
     <router-link class="panel-block" :to="{ name: 'addons-workshop' }">
         Workshop Addons
@@ -28,5 +28,8 @@
 </style>
 
 <script setup lang="ts">
-
+const emit = defineEmits(["refreshList"])
+function refreshList() {
+    emit("refreshList")
+}
 </script>
