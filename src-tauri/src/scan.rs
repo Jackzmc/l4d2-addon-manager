@@ -2,12 +2,13 @@ use std::collections::VecDeque;
 use std::fmt::Display;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, LazyLock, Mutex, RwLock};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::thread::JoinHandle;
 use chrono::{DateTime, Utc};
 use l4d2_addon_parser::{AddonInfo, L4D2Addon, MissionInfo};
 use log::{debug, error, info};
+use regex::Regex;
 use tauri::async_runtime::{channel, Receiver, Sender};
 use tauri::State;
 use crate::addons::{AddonData, AddonEntry, AddonFlags, AddonStorageContainer};
@@ -193,6 +194,7 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
     }
 
     let flags = get_addon_flags(&info);
+    let ws_id = find_workshop_id(&path, &info);
 
     // Treat file as new now
     let data = AddonData {
@@ -205,8 +207,9 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
             author: info.author,
             version: info.version.unwrap(),
             tagline: None, //info.tagline,
-            workshop_id: None
+            workshop_id: ws_id
     };
+    // TODO: add missions
     // Add to DB
     addons.add_entry(data).await
         .map_err(|e| NewEntryError(e))?;
@@ -219,21 +222,49 @@ pub async fn parse_addon(path: &PathBuf) -> Result<(AddonInfo, Option<MissionInf
     let info = addon.info()?
         .ok_or(l4d2_addon_parser::Error::VPKError("Bad addon: No addoninfo.txt found in addon".to_string()))?;
     let map = addon.missions()?;
+
     Ok((info, map))
+}
+
+// Can guarantee id is 4 digits at minimum.
+// IDs are sequential, L4D2 Workshop came out after the 10000th addon was released
+static WORKSHOP_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"https://steamcommunity.com/sharedfiles/filedetails/\?id=(\d+)").unwrap());
+static WORKSHOP_FILE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\d{4,}").unwrap());
+
+
+/// Attempts to extract workshop ID from addon url or filename
+fn find_workshop_id(path: &PathBuf, addon: &AddonInfo) -> Option<i64> {
+    // Try URL first, as we can guarantee from there
+    if let Some(url) = &addon.addon_url {
+        if let Some(capture) = WORKSHOP_URL_REGEX.captures(url) {
+            let id = capture.get(1).unwrap().as_str();
+            debug!("Found workshop ID \"{}\" (addon url)", id);
+            return Some(id.parse::<i64>().unwrap());
+        }
+    }
+
+    // Try to get it from filename
+    let filename = path.file_name().unwrap().to_str().unwrap();
+    if let Some(cap) = WORKSHOP_FILE_REGEX.find(filename) {
+        let id = cap.as_str().parse::<i64>().unwrap();
+        debug!("Found workshop ID \"{}\" (file)", id);
+        return Some(id);
+    }
+    None
 }
 
 fn get_addon_flags(info: &AddonInfo) -> AddonFlags {
     let mut flags = AddonFlags::empty();
-    if info.is_map {
+    if info.content.is_map {
         flags |= AddonFlags::CAMPAIGN;
     }
-    if info.is_survivor {
+    if info.content.is_survivor {
         flags |= AddonFlags::SURVIVOR;
     }
-    if info.is_script {
+    if info.content.is_script {
         flags |= AddonFlags::SCRIPT;
     }
-    if info.is_weapon {
+    if info.content.is_weapon {
         flags |= AddonFlags::WEAPON;
     }
     flags
