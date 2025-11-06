@@ -1,14 +1,10 @@
 use crate::cfg::AppConfig;
 use crate::commands::config as cmd_config;
 use crate::commands::addons as cmd_addons;
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
-use log::debug;
+use std::sync::{Arc};
 use tauri::async_runtime::Mutex;
-use tauri::{Emitter, Manager};
-use tauri_plugin_store::StoreExt;
-use crate::addons::{AddonStorage, AddonStorageContainer};
+use tauri::{Manager};
+use crate::addons::{AddonStorage};
 use crate::scan::AddonScanner;
 
 pub mod cfg;

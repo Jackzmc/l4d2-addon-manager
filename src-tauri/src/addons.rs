@@ -2,13 +2,12 @@ use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::SystemTime;
 use bitflags::bitflags;
 use chrono::DateTime;
 use l4d2_addon_parser::AddonInfo;
-use log::{debug, error, info};
+use log::{info};
 use serde::{Deserialize, Serialize};
-use sqlx::{ConnectOptions, FromRow, Pool, Row, Sqlite};
+use sqlx::{FromRow, Pool,Sqlite};
 use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use tauri::async_runtime::Mutex;
@@ -18,13 +17,6 @@ use crate::models::addon::{FullAddonWithTagsList, PartialAddon};
 pub struct WorkshopItem {
     publishedfileid: String,
     title: String
-}
-
-impl WorkshopItem {
-    /// Link to the steam workshop
-    pub fn link(&self) -> String {
-        format!("http://www.steamcommunity.com/sharedfiles/filedetails/?id={}", self.publishedfileid)
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]

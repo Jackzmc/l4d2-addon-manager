@@ -3,7 +3,7 @@ use log::debug;
 use std::env::home_dir;
 use std::path::PathBuf;
 use tauri::State;
-use tauri_plugin_dialog::{DialogExt, FilePath};
+use tauri_plugin_dialog::{DialogExt};
 
 #[tauri::command]
 pub async fn choose_game_folder(app: tauri::AppHandle) -> Result<PathBuf, String> {
@@ -46,7 +46,6 @@ pub async fn choose_game_folder(app: tauri::AppHandle) -> Result<PathBuf, String
 
 #[tauri::command]
 pub async fn set_game_folder(
-    app: tauri::AppHandle,
     cfg: State<'_, AppConfigContainer>,
     path: String,
 ) -> Result<(), String> {

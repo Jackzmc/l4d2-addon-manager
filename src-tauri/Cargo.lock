@@ -2265,13 +2265,11 @@ version = "2.0.0"
 dependencies = [
  "bitflags 2.10.0",
  "chrono",
- "keyvalues-serde",
  "l4d2_addon_parser",
  "log",
  "regex",
  "serde",
  "serde_json",
- "sourcepak",
  "sqlx",
  "steam-workshop-api",
  "tauri",
@@ -2280,6 +2278,7 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-opener",
  "tauri-plugin-store",
+ "tokio",
 ]
 
 [[package]]

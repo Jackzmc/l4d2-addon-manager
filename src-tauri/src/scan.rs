@@ -1,94 +1,79 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::fmt::Display;
+use std::iter::Scan;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
-use std::sync::{Arc, LazyLock, Mutex, RwLock};
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::mpsc::{channel, Sender};
 use std::thread::JoinHandle;
+use std::time::Duration;
 use chrono::{DateTime, Utc};
-use l4d2_addon_parser::{AddonInfo, L4D2Addon, MissionInfo};
+use l4d2_addon_parser::{AddonInfo, L4D2Addon};
 use log::{debug, error, info};
 use regex::Regex;
 use serde::Serialize;
-use tauri::async_runtime::{channel, Receiver, Sender};
-use tauri::{AppHandle, Emitter, State, Window};
-use crate::addons::{AddonData, AddonEntry, AddonFlags, AddonStorageContainer};
+use tauri::{AppHandle, Emitter};
+use crate::addons::{AddonData, AddonFlags, AddonStorageContainer, WorkshopItem};
 use crate::scan::ScanError::{DBError, FileError, NewEntryError, ParseError, UpdateError, UpdateRenameError};
 
 pub struct AddonScanner {
-    thread: Option<JoinHandle<()>>,
-    queue: Option<Arc<Mutex<VecDeque<PathBuf>>>>,
+    scan_thread: Option<JoinHandle<()>>,
+    queue: ScanQueue,
+    abort_signal: Arc<AtomicBool>,
 
     addons: AddonStorageContainer,
     app: AppHandle
 }
 
 pub type ScannerContainer = Mutex<AddonScanner>;
+type ScanQueue = Arc<Mutex<VecDeque<PathBuf>>>;
+
+const NUM_THREADS: usize = 1;
 
 impl AddonScanner {
     pub fn new(addons: AddonStorageContainer, app: AppHandle) -> Self {
         Self {
-            thread: None,
-            queue: None,
+            scan_thread: None,
+            abort_signal: Arc::new(AtomicBool::new(false)),
+            queue: Arc::new(Mutex::new(VecDeque::new())),
             addons,
             app
         }
     }
 
-    /// Starts an async scan. New items will appear in database
+    /// Starts an async background scan. New items will appear in database on their own
+    /// The scan starts a main thread that first scans both addons/ and addons/workshop dirs
+    /// All addons/*.vpk are in a queue to be processed in N (NUM_THREADS) worker threads
+    /// When worker threads done, any new workshop IDs are returned, and merged into main thread's workshop ids
+    /// Workshop ids then are resolved in batches of 100 (steam's max limit)
     pub fn start_scan(&mut self, path: PathBuf) -> bool {
-        if self.thread.is_none() {
-            let mut queue = Arc::new(Mutex::new(VecDeque::new()));
-            self.queue = Some(queue.clone());
-            info!("Starting new scan, performing initial directory scan");
+        if !self.is_running() {
+            let queue = self.queue.clone();
+            let addons = self.addons.clone();
+            let app = self.app.clone();
+            let abort_signal = self.abort_signal.clone();
 
-            self.app.emit("scan_state", ScanState::Started).ok();
-
-            self._scan_dir(&path).expect("failed to scan dir");
-
-            info!("Done. Starting addon scan thread");
-            let counter = Arc::new(ScanCounter::default());
-            let thread = {
-                let queue = queue;
-                let addons = self.addons.clone();
-                let counter = counter.clone();
-                let app = self.app.clone();
-                std::thread::spawn(move || scan_thread(queue, addons, counter, app))
-            };
-            self.thread = Some(thread);
+            self.scan_thread = Some(std::thread::spawn(|| scan_main_thread(path, abort_signal, queue, addons, app)));
         }
         true
     }
     pub fn abort_scan(&mut self) {
-        let queue = self.queue.as_ref().unwrap();
-        let mut queue = queue.lock().unwrap();
-        queue.clear();
-        if let Some(thread) = self.thread.take() {
-            thread.join().unwrap();
-        }
+        if !self.is_running() { return; } // ignore if not running
+
+        let mut queue = self.queue.lock().unwrap();
+        queue.clear(); // threads should end once cleared
+
+        self.abort_signal.store(true, Ordering::SeqCst);
+
+        info!("Waiting for threads to end");
+
+        info!("Scan aborted");
     }
 
+    /// Is a scan running
     pub fn is_running(&self) -> bool {
-        self.thread.is_some()
-    }
-
-    /// Performs a scan of directory
-    fn _scan_dir(&mut self, path: &PathBuf) -> Result<(), String> {
-        info!("Scanning addons at {}", path.display());
-        let dir = std::fs::read_dir(path)
-            .map_err(|e| e.to_string())?;
-        let mut queue = self.queue.as_ref().expect("queue not initialized")
-            .lock().unwrap();
-        for file in dir {
-            let file = file.map_err(|e| e.to_string())?;
-            let path = file.path();
-            if let Some(ext) = path.extension() {
-                if ext == "vpk" {
-                    queue.push_front(path);
-                }
-            }
-        }
-        Ok(())
+        self.scan_thread.is_some()
     }
 }
 #[derive(Default, Clone)]
@@ -97,9 +82,80 @@ struct ScanCounter {
     added: Arc<AtomicU32>,
     errors: Arc<AtomicU32>
 }
-type ScanCounterContainer = Mutex<ScanCounter>;
 
-fn scan_thread(queue: Arc<Mutex<VecDeque<PathBuf>>>, addons: AddonStorageContainer, counter: Arc<ScanCounter>, app: AppHandle) {
+/// Performs a scan of directory returning list of pathbufs
+fn get_vpks_in_dir(path: &PathBuf) -> Result<Vec<PathBuf>, String> {
+    info!("Scanning addons at {}", path.display());
+    let dir = std::fs::read_dir(path)
+        .map_err(|e| e.to_string())?;
+    let mut list = Vec::new();
+    for file in dir {
+        let file = file.map_err(|e| e.to_string())?;
+        let path = file.path();
+        if let Some(ext) = path.extension() {
+            if ext == "vpk" {
+                list.push(path);
+            }
+        }
+    }
+    Ok(list)
+}
+
+/// Main thread that starts and manages thread
+fn scan_main_thread(path: PathBuf, abort_signal: Arc<AtomicBool>,  queue: ScanQueue, addons: AddonStorageContainer, app: AppHandle) {
+    let counter = Arc::new(ScanCounter::default());
+    app.emit("scan_state", ScanState::Started).ok();
+
+    // Load queue with vpks before starting worker threads
+    {
+        let files = get_vpks_in_dir(&path).expect("failed to scan dir");
+        let mut queue = queue.lock().unwrap();
+        for vpk in files  {
+            queue.push_front(vpk);
+        }
+    }
+
+    if abort_signal.load(Ordering::SeqCst) {
+        info!("Got early abort signal, ending");
+        return;
+    }
+
+    let ws_addons = get_vpks_in_dir(&path.join("workshop"))
+        .expect("failed to scan ws dir");
+
+    info!("Done. Starting addon scan thread");
+    let mut threads = Vec::new();
+    for _ in 0..NUM_THREADS {
+        let thread = {
+            let queue = queue.clone();
+            let addons = addons.clone();
+            let counter = counter.clone();
+            let app = app.clone();
+            std::thread::spawn(move || scan_worker_thread(queue, addons, counter, app))
+        };
+        threads.push(thread);
+    }
+    // Sleep loop until all threads done
+    while !abort_signal.load(Ordering::SeqCst) {
+        // Check every thread
+        let all_threads_done = threads.iter().all(|thread| thread.is_finished());
+        if all_threads_done {
+            break;
+        }
+        std::thread::sleep(Duration::from_secs(1));
+    }
+    // Wait for threads to actually finish one by one
+    for thread in threads.drain(0..) {
+        thread.join().ok();
+    }
+
+    app.emit("scan_state", ScanState::Complete).ok();
+    info!("ADDON SCAN COMPLETE. {} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
+}
+
+/// Parallel worker thread(s)
+fn scan_worker_thread(queue: ScanQueue, addons: AddonStorageContainer, counter: Arc<ScanCounter>, app: AppHandle) {
+    // let mut workshop_ids = Vec::new();
     loop {
         let item = {
             let mut queue = queue.lock().unwrap();
@@ -116,7 +172,9 @@ fn scan_thread(queue: Arc<Mutex<VecDeque<PathBuf>>>, addons: AddonStorageContain
             match scan_file(&item, addons).await {
                 Ok(result) => {
                     match result {
-                        ScanResult::Added => { counter.added.fetch_add(1, Ordering::Relaxed); },
+                        ScanResult::Added => {
+                            counter.added.fetch_add(1, Ordering::Relaxed);
+                        },
                         _ => {}
                     };
                     app.emit("scan_result", ScanResultPayload {
@@ -128,13 +186,9 @@ fn scan_thread(queue: Arc<Mutex<VecDeque<PathBuf>>>, addons: AddonStorageContain
                     error!("SCAN ERROR FOR \"{}\": {}", filename, e);
                     counter.errors.fetch_add(1, Ordering::Relaxed);
                 },
-                _ => {}
             }
         });
     }
-    app.emit("scan_state", ScanState::Complete).ok();
-    info!("ADDON SCAN COMPLETE. {} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
-    // TODO: send notification to UI
 }
 #[derive(Serialize, Clone)]
 #[serde(rename = "snake_case")]
@@ -192,11 +246,9 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
     let (info, chapter_ids) = parse_addon(&path).await
         .map_err(|e| ParseError(e))?;
 
-    let mut should_update = false;
     if let Some(entry) = addon_entry {
         let last_modified = meta.modified().map_err(|e| FileError(e))?;
         // Check if file has been modified since scanned
-        should_update = <DateTime<Utc>>::from(last_modified) > entry.updated_at;
         if <DateTime<Utc>>::from(last_modified) > entry.updated_at {
             let mut addons = addons.lock().await;
             debug!("file has changed, updating entry {:?}", path);
@@ -236,7 +288,7 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
             chapter_ids: chapter_ids.map(|c| c.join(",")),
             workshop_id: ws_id
     };
-    // TODO: add missions
+
     // Add to DB
     addons.add_entry(data).await
         .map_err(|e| NewEntryError(e))?;
@@ -270,7 +322,6 @@ fn find_workshop_id(path: &PathBuf, addon: &AddonInfo) -> Option<i64> {
     if let Some(url) = &addon.addon_url {
         if let Some(capture) = WORKSHOP_URL_REGEX.captures(url) {
             let id = capture.get(1).unwrap().as_str();
-            debug!("Found workshop ID \"{}\" (addon url)", id);
             return Some(id.parse::<i64>().unwrap());
         }
     }
@@ -279,7 +330,6 @@ fn find_workshop_id(path: &PathBuf, addon: &AddonInfo) -> Option<i64> {
     let filename = path.file_name().unwrap().to_str().unwrap();
     if let Some(cap) = WORKSHOP_FILE_REGEX.find(filename) {
         let id = cap.as_str().parse::<i64>().unwrap();
-        debug!("Found workshop ID \"{}\" (file)", id);
         return Some(id);
     }
     None
