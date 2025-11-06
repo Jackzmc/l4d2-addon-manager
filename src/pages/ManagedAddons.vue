@@ -1,5 +1,5 @@
 <template>
-    <AddonList :addons="addons" />
+    <AddonList :addons="addons" @refresh="refresh" />
     <p class="has-text-centered my-6" v-if="addons.length === 0">
         No addons found
     </p>

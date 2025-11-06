@@ -2,6 +2,7 @@ use log::debug;
 use tauri::State;
 use crate::addons::{AddonEntry, AddonFlags, AddonStorageContainer};
 use crate::cfg::AppConfigContainer;
+use crate::scan::ScannerContainer;
 
 #[tauri::command]
 pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>) -> Result<Vec<AddonEntry>, String> {
@@ -10,14 +11,14 @@ pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>) -> Re
 }
 
 #[tauri::command]
-pub async fn addons_scan_managed(cfg: State<'_, AppConfigContainer>, addons: State<'_, AddonStorageContainer>) -> Result<(), String> {
+pub async fn addons_scan_managed(cfg: State<'_, AppConfigContainer>, scanner: State<'_, ScannerContainer>) -> Result<(), String> {
     debug!("starting scan of addons");
     let addons_folder = {
         let cfg = cfg.lock().await;
         cfg.addons_folder.clone().ok_or_else(|| "no addon folder configured".to_string())?
     };
-    let mut addons = addons.lock().await;
-    addons.scan(addons_folder).await?;
+    let mut scanner = scanner.lock().unwrap();
+    scanner.start_scan(addons_folder);
     Ok(())
 }
 

@@ -8,6 +8,8 @@ pub mod util;
 mod addons;
 mod models;
 
+mod scan;
+
 fn main() {
     l4d2_addon_manager_lib::run()
 }

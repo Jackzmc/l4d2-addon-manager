@@ -1,6 +1,6 @@
 <template>
   {{ size }}
-  <notifications position="bottom right" :speed=1500 />
+  <notifications position="bottom right" :speed="5000" />
   <router-view />
 
 </template>

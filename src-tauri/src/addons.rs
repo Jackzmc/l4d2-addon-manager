@@ -1,6 +1,7 @@
 use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::SystemTime;
 use bitflags::bitflags;
 use chrono::DateTime;
@@ -80,7 +81,7 @@ pub struct AddonStorage {
     pool: Pool<Sqlite>,
 }
 
-pub type AddonStorageContainer = Mutex<AddonStorage>;
+pub type AddonStorageContainer = Arc<Mutex<AddonStorage>>;
 
 impl AddonStorage {
     pub async fn new(store_folder: PathBuf) -> Result<Self, String> {
@@ -109,7 +110,7 @@ impl AddonStorage {
         Ok(sqlx::query_as::<_, AddonWithTagsList>(r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
                 from addons
-                left join addon_tags tags on tags.filename = addons.filename
+                left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
                 group by addons.filename
             "#
         )
@@ -147,7 +148,7 @@ impl AddonStorage {
         sqlx::query_as::<_, AddonWithTagsList>(r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
                 from addons
-                left join addon_tags tags on tags.filename = addons.filename
+                left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
                 where addons.filename = ?
                 group by addons.filename
             "#
@@ -161,7 +162,7 @@ impl AddonStorage {
         sqlx::query_as::<_, AddonWithTagsList>(r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
                 from addons
-                left join addon_tags tags on tags.filename = addons.filename
+                left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
                 where addons.title = ? AND addons.version = ?
                 group by addons.filename
             "#
@@ -170,51 +171,6 @@ impl AddonStorage {
             .bind(version)
             .fetch_optional(&self.pool)
             .await
-    }
-
-    pub async fn scan(&mut self, path_buf: PathBuf) -> Result<(), String> {
-        info!("Scanning addons at {}", path_buf.display());
-        let dir = std::fs::read_dir(path_buf).map_err(|e| e.to_string())?;
-        for file in dir {
-            let file = file.map_err(|e| e.to_string())?;
-            let path = file.path();
-            if let Some(ext) = path.extension() {
-                if ext == "vpk" {
-                    if let Err(e) = self._scan_file(&path, AddonFlags(0)).await {
-                        error!("Failed to scan {}: {}", path.display(), e);
-                    };
-                }
-            }
-        }
-        Ok(())
-    }
-
-    async fn _scan_file(&mut self, path: &PathBuf, flags: AddonFlags) -> Result<(), sqlx::Error> {
-        let file = std::fs::File::open(path).unwrap();
-        let file_name = path.file_name().unwrap();
-        let metadata = file.metadata().unwrap();
-
-        // TODO: check if has workshop ID
-
-        let entry = AddonEntry {
-            addon: AddonData {
-                filename: file_name.to_string_lossy().to_string(),
-                updated_at: metadata.modified().unwrap().into(),
-                created_at: metadata.created().unwrap().into(),
-                file_size: metadata.size() as i64,
-                flags,
-                title: "".to_string(),
-                author: None,
-                version: "".to_string(),
-                tagline: None,
-                workshop_id: None,
-            },
-            tags: vec![],
-            workshop_info: None,
-        };
-
-        self._add_entry(entry).await?;
-        Ok(())
     }
 
     pub async fn update_entry(&mut self, filename: &str, file_meta: Metadata, addon: AddonInfo) -> Result<(), sqlx::Error> {
@@ -234,19 +190,21 @@ impl AddonStorage {
     }
 
 
-    pub async fn update_entry_pk(&mut self, title: &str, version: &str, new_filename: &str) -> Result<(), sqlx::Error> {
-        sqlx::query!(
+    /// Update the entry by its primary key. Returns boolean if an entry existed and had its filename changed, false if not
+    pub async fn update_entry_pk(&mut self, title: &str, version: &str, new_filename: &str) -> Result<bool, sqlx::Error> {
+        let affected = sqlx::query!(
             "UPDATE addons SET filename = ? WHERE title = ? AND version = ?",
             new_filename,
             title,
             version
         )
             .execute(&self.pool)
-            .await?;
-        Ok(())
+            .await?
+            .rows_affected();
+        Ok(affected > 0)
     }
 
-    async fn _add_entry(&mut self, entry: AddonEntry) -> Result<(), sqlx::Error> {
+    pub async fn add_entry(&mut self, entry: AddonEntry) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO addons (filename, updated_at, created_at, file_size, flags, workshop_id) VALUES (?, ?, ?, ?, ?, ?)",
             entry.addon.filename,

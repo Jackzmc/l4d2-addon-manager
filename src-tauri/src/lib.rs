@@ -8,7 +8,8 @@ use log::debug;
 use tauri::async_runtime::Mutex;
 use tauri::{Emitter, Manager};
 use tauri_plugin_store::StoreExt;
-use crate::addons::AddonStorage;
+use crate::addons::{AddonStorage, AddonStorageContainer};
+use crate::scan::AddonScanner;
 
 pub mod cfg;
 mod commands;
@@ -38,8 +39,14 @@ pub fn run() {
             tauri::async_runtime::block_on(async move {
                 let db = AddonStorage::new(data_dir).await.expect("failed to create db");
                 db.run_migrations().await.expect("migrations failed");
-                app.manage(Mutex::new(db));
+                let db = Arc::new(Mutex::new(db));
+                app.manage(db.clone());
+
+                let scanner = std::sync::Mutex::new(AddonScanner::new(db));
+                app.manage(scanner);
             });
+
+
 
             Ok(())
         })
