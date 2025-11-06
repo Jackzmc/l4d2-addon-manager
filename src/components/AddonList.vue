@@ -1,5 +1,5 @@
 <template>
-<table class="table is-fullwidth has-sticky-header">
+<table class="table is-fullwidth has-sticky-header mb-4">
     <thead>
         <tr>
             <td colspan="5">
