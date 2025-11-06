@@ -35,6 +35,14 @@
             <td><b>Version</b></td>
             <td>{{ props.entry.addon.version }}</td>
         </tr>
+        <tr v-if="props.entry.addon.chapter_ids">
+            <td><b>Chapter Ids</b></td>
+            <td>
+                <div class="tags">
+                    <span class="tag" v-for="tag in props.entry.addon.chapter_ids.split(',')" :key="tag">{{ tag }}</span>
+                </div>
+            </td>
+        </tr>
         <tr>
             <td><b>Content</b></td>
             <td>

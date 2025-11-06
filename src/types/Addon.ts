@@ -10,6 +10,7 @@ export interface Addon {
     author: string | null,
     version: string | null,
     tagline: string | null,
+    chapter_ids: string | null,
     workshop_id: string | null
 }
 

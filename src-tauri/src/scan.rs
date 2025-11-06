@@ -9,8 +9,9 @@ use chrono::{DateTime, Utc};
 use l4d2_addon_parser::{AddonInfo, L4D2Addon, MissionInfo};
 use log::{debug, error, info};
 use regex::Regex;
+use serde::Serialize;
 use tauri::async_runtime::{channel, Receiver, Sender};
-use tauri::State;
+use tauri::{AppHandle, Emitter, State, Window};
 use crate::addons::{AddonData, AddonEntry, AddonFlags, AddonStorageContainer};
 use crate::scan::ScanError::{DBError, FileError, NewEntryError, ParseError, UpdateError, UpdateRenameError};
 
@@ -19,16 +20,18 @@ pub struct AddonScanner {
     queue: Option<Arc<Mutex<VecDeque<PathBuf>>>>,
 
     addons: AddonStorageContainer,
+    app: AppHandle
 }
 
 pub type ScannerContainer = Mutex<AddonScanner>;
 
 impl AddonScanner {
-    pub fn new(addons: AddonStorageContainer) -> Self {
+    pub fn new(addons: AddonStorageContainer, app: AppHandle) -> Self {
         Self {
             thread: None,
             queue: None,
             addons,
+            app
         }
     }
 
@@ -39,6 +42,7 @@ impl AddonScanner {
             self.queue = Some(queue.clone());
             info!("Starting new scan, performing initial directory scan");
 
+            self.app.emit("scan_state", ScanState::Started).ok();
 
             self._scan_dir(&path).expect("failed to scan dir");
 
@@ -48,7 +52,8 @@ impl AddonScanner {
                 let queue = queue;
                 let addons = self.addons.clone();
                 let counter = counter.clone();
-                std::thread::spawn(move || scan_thread(queue, addons, counter))
+                let app = self.app.clone();
+                std::thread::spawn(move || scan_thread(queue, addons, counter, app))
             };
             self.thread = Some(thread);
         }
@@ -86,7 +91,6 @@ impl AddonScanner {
         Ok(())
     }
 }
-
 #[derive(Default, Clone)]
 struct ScanCounter {
     total: Arc<AtomicU32>,
@@ -95,7 +99,7 @@ struct ScanCounter {
 }
 type ScanCounterContainer = Mutex<ScanCounter>;
 
-fn scan_thread(queue: Arc<Mutex<VecDeque<PathBuf>>>, addons: AddonStorageContainer, counter: Arc<ScanCounter>) {
+fn scan_thread(queue: Arc<Mutex<VecDeque<PathBuf>>>, addons: AddonStorageContainer, counter: Arc<ScanCounter>, app: AppHandle) {
     loop {
         let item = {
             let mut queue = queue.lock().unwrap();
@@ -105,14 +109,22 @@ fn scan_thread(queue: Arc<Mutex<VecDeque<PathBuf>>>, addons: AddonStorageContain
 
         let addons = addons.clone();
         let counter = counter.clone();
+        let app = app.clone();
         tauri::async_runtime::block_on(async move {
             counter.total.fetch_add(1, Ordering::Relaxed);
+            let filename = item.file_name().unwrap().to_string_lossy().to_string();
             match scan_file(&item, addons).await {
-                Ok(ScanResult::Added) => {
-                    counter.added.fetch_add(1, Ordering::Relaxed);
+                Ok(result) => {
+                    match result {
+                        ScanResult::Added => { counter.added.fetch_add(1, Ordering::Relaxed); },
+                        _ => {}
+                    };
+                    app.emit("scan_result", ScanResultPayload {
+                        result,
+                        filename
+                    }).ok();
                 },
                 Err(e) => {
-                    let filename = item.file_name().unwrap().to_string_lossy();
                     error!("SCAN ERROR FOR \"{}\": {}", filename, e);
                     counter.errors.fetch_add(1, Ordering::Relaxed);
                 },
@@ -120,9 +132,16 @@ fn scan_thread(queue: Arc<Mutex<VecDeque<PathBuf>>>, addons: AddonStorageContain
             }
         });
     }
-    // FIXME: why is it 0.
+    app.emit("scan_state", ScanState::Complete).ok();
     info!("ADDON SCAN COMPLETE. {} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
     // TODO: send notification to UI
+}
+#[derive(Serialize, Clone)]
+#[serde(rename = "snake_case")]
+pub enum ScanState {
+    Started,
+    Failed,
+    Complete
 }
 
 pub enum ScanError {
@@ -147,12 +166,19 @@ impl Display for ScanError {
     }
 }
 
+#[derive(Serialize, Clone)]
+pub struct ScanResultPayload {
+    result: ScanResult,
+    filename: String
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename = "snake_case")]
 pub enum ScanResult {
     Updated,
     Renamed,
     Added,
     NoAction,
-    Error(ScanError)
 }
 pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<ScanResult, ScanError> {
     let meta = path.metadata().map_err(|e| FileError(e))?;

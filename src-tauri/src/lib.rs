@@ -46,7 +46,7 @@ pub fn run() {
                 let db = Arc::new(Mutex::new(db));
                 app.manage(db.clone());
 
-                let scanner = std::sync::Mutex::new(AddonScanner::new(db));
+                let scanner = std::sync::Mutex::new(AddonScanner::new(db, app.handle().clone()));
                 app.manage(scanner);
             });
 
