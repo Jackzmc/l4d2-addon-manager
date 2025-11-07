@@ -13,10 +13,12 @@ use l4d2_addon_parser::{AddonInfo, L4D2Addon};
 use log::{debug, error, info};
 use regex::Regex;
 use serde::Serialize;
+use steam_workshop_api::{SteamWorkshop, WorkshopItem};
 use tauri::{AppHandle, Emitter};
-use tokio::join;
+use tokio::{join, task};
+use tokio::runtime::Handle;
 use tokio::task::JoinSet;
-use crate::addons::{AddonData, AddonFlags, AddonStorageContainer, WorkshopItem};
+use crate::addons::{AddonData, AddonFlags, AddonStorageContainer};
 use crate::scan::ScanError::{DBError, FileError, NewEntryError, ParseError, UpdateError, UpdateRenameError};
 
 pub struct AddonScanner {
@@ -147,21 +149,40 @@ fn scan_main_thread(path: PathBuf, abort_signal: Arc<AtomicBool>,addons: AddonSt
     // as it needs to be .await'd, but we are running on a sync thread
     // so there is a task running on a task thread and this main thread is just sleeping
     let (tx, rx) = channel::<()>();
+    let ws = Arc::new(SteamWorkshop::new());
 
     // Spawn a task to await all the other worker tasks
     rt.spawn(async move {
         let mut is_aborting = false;
         while let Some(Ok(result)) = set.join_next().await {
-            if let Some(workshop_id) = result {
-                ws_addons.push(workshop_id)
+            match result {
+                WorkerOutput::WorkshopId(workshop_id) => {
+                    ws_addons.push(workshop_id);
+                    // If we got >= 100 workshop ids, while we are still processing, go ahead and fetch them
+                    if ws_addons.len() >= 100 {
+                        start_workshop_resolve_task(&addons, &mut ws_addons, &mut set, &ws);
+                    }
+                },
+                _ => {}
             }
+
             // Check if we should abort, only abort once
             if !is_aborting && abort_signal.load(Ordering::SeqCst) {
                 set.abort_all();
                 is_aborting = true;
-                break;
             }
         }
+
+        // All tasks complete, resolve any remaining workshop ids
+        while ws_addons.len() > 0 {
+            start_workshop_resolve_task(&addons, &mut ws_addons, &mut set, &ws);
+        }
+
+        info!("Scan completed, fetching work items");
+        info!("Workshop Items to Process: {}", &ws_addons.len());
+        // TODO: process!
+        info!("Workshop item fetching complete");
+
         tx.send(()).unwrap();
     });
 
@@ -169,6 +190,34 @@ fn scan_main_thread(path: PathBuf, abort_signal: Arc<AtomicBool>,addons: AddonSt
     rx.recv().unwrap();
     app.emit("scan_state", ScanState::Complete).ok();
     info!("ADDON SCAN COMPLETE. {} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
+}
+
+/// Takes upto 100 ids and spawns new fetch task
+/// Runs on tokio main worker threads to avoid scan aborts dropping it
+fn start_workshop_resolve_task(addons: &AddonStorageContainer, ws_addons: &mut Vec<i64>, set: &mut JoinSet<WorkerOutput>, ws: &Arc<SteamWorkshop>) {
+    // Steam API only supports upto 100 at a time
+    let slice: Vec<String> = ws_addons.iter().take(100).map(|item| item.to_string()).collect();
+    let addons = addons.clone();
+    let ws = ws.clone();
+    task::spawn(get_workshop_ids(ws, slice, addons));
+}
+
+enum WorkerOutput {
+    /// Worker has new workshop id to enqueue
+    WorkshopId(i64),
+    /// Worker has fetched workshop items
+    WorkshopItems(Vec<WorkshopItem>),
+    /// Worker has nothing useful
+    None
+}
+
+async fn get_workshop_ids(ws: Arc<SteamWorkshop>, slice: Vec<String>, addons: AddonStorageContainer) -> WorkerOutput {
+    if let Ok(items) = ws.get_published_file_details(&slice) {
+        let addons = addons.lock().await;
+        addons.add_workshop_items(items).await
+            .expect("failed to add workshop items");
+    }
+    WorkerOutput::None
 }
 
 /// Parallel worker thread(s)
@@ -252,7 +301,7 @@ pub enum ScanResult {
     Added,
     NoAction,
 }
-async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter: Arc<ScanCounter>) -> Option<i64> {
+async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter: Arc<ScanCounter>) -> WorkerOutput {
     let filename = path.file_name().unwrap().to_string_lossy().to_string();
     counter.total.fetch_add(1, Ordering::Relaxed);
     match scan_file(path, addons).await {
@@ -260,7 +309,9 @@ async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter
             match result {
                 ScanResult::Added => {
                     counter.added.fetch_add(1, Ordering::Relaxed);
-                    return data?.workshop_id
+                    if let Some(ws_id) = data.expect("added has entries").workshop_id {
+                        return WorkerOutput::WorkshopId(ws_id)
+                    }
                 },
                 _ => {}
             };
@@ -270,7 +321,7 @@ async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter
             counter.errors.fetch_add(1, Ordering::Relaxed);
         }
     }
-    None
+    WorkerOutput::None
 }
 async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(ScanResult, Option<AddonData>), ScanError> {
     debug!("checking {:?}", path);

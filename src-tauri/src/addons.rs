@@ -7,17 +7,12 @@ use chrono::DateTime;
 use l4d2_addon_parser::AddonInfo;
 use log::{info};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Pool,Sqlite};
+use sqlx::{FromRow, Pool, QueryBuilder, SqlSafeStr, Sqlite};
 use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
+use steam_workshop_api::WorkshopItem;
 use tauri::async_runtime::Mutex;
 use crate::models::addon::{FullAddonWithTagsList, PartialAddon};
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct WorkshopItem {
-    publishedfileid: String,
-    title: String
-}
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AddonFlags(pub u32);
@@ -78,7 +73,7 @@ pub struct AddonEntry {
     /// Info about addon and its file
     pub addon: AddonData,
     /// If a workshop entry is linked, its contents here
-    pub workshop_info: Option<WorkshopItem>,
+    pub workshop_info: Option<steam_workshop_api::WorkshopItem>,
     /// A list of user added tags for entry
     pub tags: Vec<String>,
 }
@@ -209,7 +204,7 @@ impl AddonStorage {
         Ok(affected > 0)
     }
 
-    pub async fn add_entry(&mut self, addon: &AddonData) -> Result<(), sqlx::Error> {
+    pub async fn add_entry(&self, addon: &AddonData) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"INSERT INTO addons
                 (filename, updated_at, created_at, file_size, title, author, version, tagline, flags, workshop_id)
@@ -227,6 +222,22 @@ impl AddonStorage {
             addon.workshop_id
         ).execute(&self.pool).await?;
         info!("Added entry {} (flags={}) (ws_id={:?}) (title={})", addon.filename, addon.flags.0, addon.workshop_id, addon.title);
+        Ok(())
+    }
+
+    pub async fn add_workshop_items(&self, items: Vec<WorkshopItem>) -> Result<(), sqlx::Error> {
+        let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
+            "INSERT INTO workshop_items (publishedfileid, title) "
+        );
+        let num_items = items.len();
+        query_builder.push_values(items, |mut b, item| {
+            b.push_bind(item.publishedfileid)
+                .push_bind(item.title);
+        });
+
+        let mut query = query_builder.build();
+        query.execute(&self.pool).await?;
+        info!("Added {} workshop items to database", num_items);
         Ok(())
     }
 }
