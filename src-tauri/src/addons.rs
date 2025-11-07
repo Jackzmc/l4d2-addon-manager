@@ -209,7 +209,7 @@ impl AddonStorage {
         Ok(affected > 0)
     }
 
-    pub async fn add_entry(&mut self, addon: AddonData) -> Result<(), sqlx::Error> {
+    pub async fn add_entry(&mut self, addon: &AddonData) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"INSERT INTO addons
                 (filename, updated_at, created_at, file_size, title, author, version, tagline, flags, workshop_id)

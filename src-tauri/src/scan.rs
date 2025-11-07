@@ -14,12 +14,13 @@ use log::{debug, error, info};
 use regex::Regex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
+use tokio::join;
+use tokio::task::JoinSet;
 use crate::addons::{AddonData, AddonFlags, AddonStorageContainer, WorkshopItem};
 use crate::scan::ScanError::{DBError, FileError, NewEntryError, ParseError, UpdateError, UpdateRenameError};
 
 pub struct AddonScanner {
     scan_thread: Option<JoinHandle<()>>,
-    queue: ScanQueue,
     abort_signal: Arc<AtomicBool>,
 
     addons: AddonStorageContainer,
@@ -29,14 +30,13 @@ pub struct AddonScanner {
 pub type ScannerContainer = Mutex<AddonScanner>;
 type ScanQueue = Arc<Mutex<VecDeque<PathBuf>>>;
 
-const NUM_THREADS: usize = 1;
+const NUM_WORKER_THREADS: usize = 1;
 
 impl AddonScanner {
     pub fn new(addons: AddonStorageContainer, app: AppHandle) -> Self {
         Self {
             scan_thread: None,
             abort_signal: Arc::new(AtomicBool::new(false)),
-            queue: Arc::new(Mutex::new(VecDeque::new())),
             addons,
             app
         }
@@ -49,20 +49,16 @@ impl AddonScanner {
     /// Workshop ids then are resolved in batches of 100 (steam's max limit)
     pub fn start_scan(&mut self, path: PathBuf) -> bool {
         if !self.is_running() {
-            let queue = self.queue.clone();
             let addons = self.addons.clone();
             let app = self.app.clone();
             let abort_signal = self.abort_signal.clone();
 
-            self.scan_thread = Some(std::thread::spawn(|| scan_main_thread(path, abort_signal, queue, addons, app)));
+            self.scan_thread = Some(std::thread::Builder::new().name("scan_main_thread".to_string()).spawn( || scan_main_thread(path, abort_signal, addons, app)).unwrap());
         }
         true
     }
     pub fn abort_scan(&mut self) {
         if !self.is_running() { return; } // ignore if not running
-
-        let mut queue = self.queue.lock().unwrap();
-        queue.clear(); // threads should end once cleared
 
         self.abort_signal.store(true, Ordering::SeqCst);
 
@@ -102,94 +98,116 @@ fn get_vpks_in_dir(path: &PathBuf) -> Result<Vec<PathBuf>, String> {
 }
 
 /// Main thread that starts and manages thread
-fn scan_main_thread(path: PathBuf, abort_signal: Arc<AtomicBool>,  queue: ScanQueue, addons: AddonStorageContainer, app: AppHandle) {
+fn scan_main_thread(path: PathBuf, abort_signal: Arc<AtomicBool>,addons: AddonStorageContainer, app: AppHandle) {
     let counter = Arc::new(ScanCounter::default());
     app.emit("scan_state", ScanState::Started).ok();
 
     // Load queue with vpks before starting worker threads
-    {
-        let files = get_vpks_in_dir(&path).expect("failed to scan dir");
-        let mut queue = queue.lock().unwrap();
-        for vpk in files  {
-            queue.push_front(vpk);
-        }
+    let mut queue = VecDeque::new();
+    let files = get_vpks_in_dir(&path).expect("failed to scan dir");
+    for vpk in files  {
+        queue.push_front(vpk);
     }
 
+    // Extract all workshop ids from workshop addons folder
+    let mut ws_addons: Vec<i64> = get_vpks_in_dir(&path.join("workshop"))
+        .expect("failed to scan ws dir")
+        .into_iter()
+        .map(|item| item.file_stem().unwrap().to_string_lossy().parse::<i64>())
+        // Remove any files that don't have a valid ID:
+        .filter(|item| item.is_ok())
+        .map(|item| item.unwrap())
+        .collect();
+
+
+    // Allow aborting early right before we enter the main process loop
     if abort_signal.load(Ordering::SeqCst) {
         info!("Got early abort signal, ending");
         return;
     }
 
-    let ws_addons = get_vpks_in_dir(&path.join("workshop"))
-        .expect("failed to scan ws dir");
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .thread_name("scan-worker")
+        .enable_time()
+        .max_blocking_threads(1)
+        .worker_threads(NUM_WORKER_THREADS)
+        .build()
+        .expect("could not build worker runtime");
 
-    info!("Done. Starting addon scan thread");
-    let mut threads = Vec::new();
-    for _ in 0..NUM_THREADS {
-        let thread = {
-            let queue = queue.clone();
-            let addons = addons.clone();
-            let counter = counter.clone();
-            let app = app.clone();
-            std::thread::spawn(move || scan_worker_thread(queue, addons, counter, app))
-        };
-        threads.push(thread);
+    info!("Spawning {} worker tasks", NUM_WORKER_THREADS);
+    let mut set = JoinSet::new();
+    // Drain the queue and start a task for every item
+    while let Some(item) = queue.pop_back() {
+        let addons = addons.clone();
+        let counter = counter.clone();
+        set.spawn_on(scan_file_wrapper(item, addons, counter), rt.handle());
     }
-    // Sleep loop until all threads done
-    while !abort_signal.load(Ordering::SeqCst) {
-        // Check every thread
-        let all_threads_done = threads.iter().all(|thread| thread.is_finished());
-        if all_threads_done {
-            break;
+
+    // The following section is a bit hacky - I'm not sure how to properly run this
+    // as it needs to be .await'd, but we are running on a sync thread
+    // so there is a task running on a task thread and this main thread is just sleeping
+    let (tx, rx) = channel::<()>();
+
+    // Spawn a task to await all the other worker tasks
+    rt.spawn(async move {
+        let mut is_aborting = false;
+        while let Some(Ok(result)) = set.join_next().await {
+            if let Some(workshop_id) = result {
+                ws_addons.push(workshop_id)
+            }
+            // Check if we should abort, only abort once
+            if !is_aborting && abort_signal.load(Ordering::SeqCst) {
+                set.abort_all();
+                is_aborting = true;
+                break;
+            }
         }
-        std::thread::sleep(Duration::from_secs(1));
-    }
-    // Wait for threads to actually finish one by one
-    for thread in threads.drain(0..) {
-        thread.join().ok();
-    }
+        tx.send(()).unwrap();
+    });
 
+    // Wait until wait task signals it's completion
+    rx.recv().unwrap();
     app.emit("scan_state", ScanState::Complete).ok();
     info!("ADDON SCAN COMPLETE. {} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
 }
 
 /// Parallel worker thread(s)
-fn scan_worker_thread(queue: ScanQueue, addons: AddonStorageContainer, counter: Arc<ScanCounter>, app: AppHandle) {
-    // let mut workshop_ids = Vec::new();
-    loop {
-        let item = {
-            let mut queue = queue.lock().unwrap();
-            if queue.len() == 0 { break; }
-            queue.pop_back().unwrap()
-        };
-
-        let addons = addons.clone();
-        let counter = counter.clone();
-        let app = app.clone();
-        tauri::async_runtime::block_on(async move {
-            counter.total.fetch_add(1, Ordering::Relaxed);
-            let filename = item.file_name().unwrap().to_string_lossy().to_string();
-            match scan_file(&item, addons).await {
-                Ok(result) => {
-                    match result {
-                        ScanResult::Added => {
-                            counter.added.fetch_add(1, Ordering::Relaxed);
-                        },
-                        _ => {}
-                    };
-                    app.emit("scan_result", ScanResultPayload {
-                        result,
-                        filename
-                    }).ok();
-                },
-                Err(e) => {
-                    error!("SCAN ERROR FOR \"{}\": {}", filename, e);
-                    counter.errors.fetch_add(1, Ordering::Relaxed);
-                },
-            }
-        });
-    }
-}
+// fn scan_worker_thread(queue: ScanQueue, addons: AddonStorageContainer, counter: Arc<ScanCounter>, app: AppHandle) {
+//     let mut workshop_ids: Vec<i64> = Vec::new();
+//     loop {
+//         let item = {
+//             let mut queue = queue.lock().unwrap();
+//             if queue.len() == 0 { break; }
+//             queue.pop_back().unwrap()
+//         };
+//
+//         let addons = addons.clone();
+//         let counter = counter.clone();
+//         let app = app.clone();
+//         tauri::async_runtime::block_on(async move {
+//             counter.total.fetch_add(1, Ordering::Relaxed);
+//             let filename = item.file_name().unwrap().to_string_lossy().to_string();
+//             match scan_file(item, addons).await {
+//                 Ok(result) => {
+//                     match result {
+//                         ScanResult::Added => {
+//                             counter.added.fetch_add(1, Ordering::Relaxed);
+//                         },
+//                         _ => {}
+//                     };
+//                     app.emit("scan_result", ScanResultPayload {
+//                         result,
+//                         filename
+//                     }).ok();
+//                 },
+//                 Err(e) => {
+//                     error!("SCAN ERROR FOR \"{}\": {}", filename, e);
+//                     counter.errors.fetch_add(1, Ordering::Relaxed);
+//                 },
+//             }
+//         });
+//     }
+// }
 #[derive(Serialize, Clone)]
 #[serde(rename = "snake_case")]
 pub enum ScanState {
@@ -234,7 +252,28 @@ pub enum ScanResult {
     Added,
     NoAction,
 }
-pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<ScanResult, ScanError> {
+async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter: Arc<ScanCounter>) -> Option<i64> {
+    let filename = path.file_name().unwrap().to_string_lossy().to_string();
+    counter.total.fetch_add(1, Ordering::Relaxed);
+    match scan_file(path, addons).await {
+        Ok((result, data)) => {
+            match result {
+                ScanResult::Added => {
+                    counter.added.fetch_add(1, Ordering::Relaxed);
+                    return data?.workshop_id
+                },
+                _ => {}
+            };
+        },
+        Err(err) => {
+            error!("SCAN ERROR FOR \"{}\": {}", filename, err);
+            counter.errors.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+    None
+}
+async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(ScanResult, Option<AddonData>), ScanError> {
+    debug!("checking {:?}", path);
     let meta = path.metadata().map_err(|e| FileError(e))?;
     let filename = path.file_name().unwrap().to_str().unwrap();
     let addon_entry = {
@@ -254,9 +293,9 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
             debug!("file has changed, updating entry {:?}", path);
             addons.update_entry(filename, meta, info).await
                 .map_err(|e| UpdateError(e))?;
-            return Ok(ScanResult::Updated)
+            return Ok((ScanResult::Updated, None))
         }
-        return Ok(ScanResult::NoAction)
+        return Ok((ScanResult::NoAction, None))
     }
 
     let mut addons = addons.lock().await;
@@ -267,7 +306,7 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
         if addons.update_entry_pk(filename, version, title).await
             .map_err(|e| UpdateRenameError(e))?
         {
-            return Ok(ScanResult::Renamed)
+            return Ok((ScanResult::Renamed, None))
         }
     }
 
@@ -290,10 +329,10 @@ pub async fn scan_file(path: &PathBuf, addons: AddonStorageContainer) -> Result<
     };
 
     // Add to DB
-    addons.add_entry(data).await
+    addons.add_entry(&data).await
         .map_err(|e| NewEntryError(e))?;
 
-    Ok(ScanResult::Added)
+    Ok((ScanResult::Added, Some(data)))
 }
 
 pub async fn parse_addon(path: &PathBuf) -> Result<(AddonInfo, Option<Vec<String>>), l4d2_addon_parser::Error> {
