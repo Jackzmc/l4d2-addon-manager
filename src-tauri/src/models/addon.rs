@@ -22,3 +22,14 @@ pub struct FullAddonWithTagsList {
     /// Comma separated list of tags
     pub tags: String
 }
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct WorkshopEntry {
+    publishedfileid: u32,
+    title: String,
+    time_updated: Option<u32>,
+    file_size: u32,
+    description: String,
+    file_url: String,
+    tags: String
+}

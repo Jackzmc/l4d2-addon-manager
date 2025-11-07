@@ -76,7 +76,7 @@ function refresh() {
 }
 async function startScan() {
     try {
-        await scanAddons(false)
+        await scanAddons()
         notify({
             type: "info",
             title: "Scan started",

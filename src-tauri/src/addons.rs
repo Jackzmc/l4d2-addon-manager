@@ -12,7 +12,7 @@ use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
 use tauri::async_runtime::Mutex;
-use crate::models::addon::{FullAddonWithTagsList, PartialAddon};
+use crate::models::addon::{FullAddonWithTagsList, PartialAddon, WorkshopEntry};
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AddonFlags(pub u32);
@@ -132,6 +132,16 @@ impl AddonStorage {
                 }
             })
             .collect::<Vec<AddonEntry>>())
+    }
+
+    pub async fn list_workshop(&self) -> Result<Vec<WorkshopEntry>, sqlx::Error> {
+        sqlx::query_as::<_, WorkshopEntry>(r#"
+                select *
+                from workshop_items
+                order by time_updated desc
+            "#
+        )
+            .fetch_all(&self.pool).await
     }
 
     pub async fn get_by_filename(&self, filename: &str) -> Result<Option<PartialAddon>, sqlx::Error> {

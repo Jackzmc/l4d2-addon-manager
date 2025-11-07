@@ -34,6 +34,6 @@ export async function init(): Promise<InitAppData> {
 }
 
 
-export async function scanAddons(workshop = false): Promise<void> {
-    return await tryInvoke(workshop ? "addons_scan_workshop" : "addons_scan_managed")
+export async function scanAddons(): Promise<void> {
+    return await tryInvoke("addons_start_scan")
 }

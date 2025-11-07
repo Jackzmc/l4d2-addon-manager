@@ -2,6 +2,7 @@ use log::debug;
 use tauri::State;
 use crate::addons::{AddonEntry, AddonFlags, AddonStorageContainer};
 use crate::cfg::AppConfigContainer;
+use crate::models::addon::WorkshopEntry;
 use crate::scan::ScannerContainer;
 
 #[tauri::command]
@@ -11,7 +12,13 @@ pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>) -> Re
 }
 
 #[tauri::command]
-pub async fn addons_scan_managed(cfg: State<'_, AppConfigContainer>, scanner: State<'_, ScannerContainer>) -> Result<(), String> {
+pub async fn addons_list_workshop(addons: State<'_, AddonStorageContainer>) -> Result<Vec<WorkshopEntry>, String> {
+    let addons = addons.lock().await;
+    addons.list_workshop().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn addons_start_scan(cfg: State<'_, AppConfigContainer>, scanner: State<'_, ScannerContainer>) -> Result<(), String> {
     let addons_folder = {
         let cfg = cfg.lock().await;
         cfg.addons_folder.clone().ok_or_else(|| "no addon folder configured".to_string())?
@@ -21,14 +28,4 @@ pub async fn addons_scan_managed(cfg: State<'_, AppConfigContainer>, scanner: St
         true => Ok(()),
         false => Err("A scan is already in progress".to_string())
     }
-}
-
-#[tauri::command]
-pub async fn addons_list_workshop() -> Result<Vec<()>, String> {
-    Ok(vec![])
-}
-
-#[tauri::command]
-pub async fn addons_scan_workshop() -> Result<(), String> {
-    Ok(())
 }

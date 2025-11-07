@@ -221,9 +221,11 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
 }
 
 async fn add_workshop(addons: &AddonStorageContainer, items: Vec<WorkshopItem>) {
+    debug!("got {} items to store", items.len());
     let addons = addons.lock().await;
     addons.add_workshop_items(items).await
         .expect("failed to add workshop items");
+    debug!("stored");
 }
 
 /// Takes upto 100 ids and spawns new fetch task
