@@ -17,6 +17,7 @@ import { notify } from '@kyvg/vue3-notification';
 import { onMounted, ref } from 'vue';
 import { ScanResultEvent, ScanResultMessage, ScanStateEvent } from '../types/App.ts';
 import { listen } from '@tauri-apps/api/event';
+import { scanAddons } from '../js/tauri.ts';
 
 const view = ref()
 
@@ -54,6 +55,8 @@ onMounted(async() => {
             })
         }
     })
+
+    scanAddons()
 })
 </script>
 
