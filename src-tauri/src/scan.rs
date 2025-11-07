@@ -169,6 +169,7 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
 
     // Spawn a task to await all the other worker tasks
     let task_running_signal = running_signal.clone();
+    let handle = rt.handle().clone();
     rt.spawn(async move {
         let mut is_aborting = false;
         debug!("scan main: waiting for tasks to finish");
@@ -178,9 +179,10 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
                     ws_addons.push(workshop_id);
                     // If we got >= 100 workshop ids, while we are still processing, go ahead and fetch them
                     if ws_addons.len() >= 100 {
-                        start_workshop_resolve_task(&addons, &mut ws_addons, &mut set, &ws);
+                        start_workshop_resolve_task(&addons, &mut ws_addons, &handle, &ws);
                     }
                 },
+                WorkerOutput::WorkshopItems(items ) => add_workshop(&addons, items).await,
                 _ => {}
             }
 
@@ -194,21 +196,21 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
         debug!("all tasks complete");
         // All tasks complete, resolve any remaining workshop ids
         while ws_addons.len() > 0 {
-            start_workshop_resolve_task(&addons, &mut ws_addons, &mut set, &ws);
+            if let WorkerOutput::WorkshopItems(items) = start_workshop_resolve_task(&addons, &mut ws_addons, &handle, &ws).await.unwrap() {
+                add_workshop(&addons, items).await;
+            }
         }
 
-        info!("Scan completed, fetching work items");
-        info!("Workshop Items to Process: {}", &ws_addons.len());
-        // TODO: process!
-        info!("Workshop item fetching complete");
+        info!("All tasks done");
 
         tx.send(()).unwrap();
     });
-    drop(rt);
 
     // Wait until wait task signals it's completion
     debug!("scan main thread sleeping");
-    rx.recv().ok();
+    if let Err(e) = rx.recv() {
+        debug!("{}", e);
+    }
     app.emit("scan_state", ScanState::Complete {
         total: counter.total.load(Ordering::SeqCst),
         added: counter.added.load(Ordering::SeqCst),
@@ -218,9 +220,15 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
     running_signal.store(true, Ordering::SeqCst); // signal that scan over
 }
 
+async fn add_workshop(addons: &AddonStorageContainer, items: Vec<WorkshopItem>) {
+    let addons = addons.lock().await;
+    addons.add_workshop_items(items).await
+        .expect("failed to add workshop items");
+}
+
 /// Takes upto 100 ids and spawns new fetch task
 /// Runs on tokio main worker threads to avoid scan aborts dropping it
-fn start_workshop_resolve_task(addons: &AddonStorageContainer, ws_addons: &mut Vec<i64>, set: &mut JoinSet<WorkerOutput>, ws: &Arc<SteamWorkshop>) {
+fn start_workshop_resolve_task(addons: &AddonStorageContainer, ws_addons: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>) -> tokio::task::JoinHandle<WorkerOutput> {
     // Steam API only supports upto 100 at a time
     let items_to_drain = 100.min(ws_addons.len()); // drain panics if over len, get smallest
     let slice: Vec<String> = ws_addons.drain(0..items_to_drain).map(|item| item.to_string()).collect();
@@ -228,7 +236,7 @@ fn start_workshop_resolve_task(addons: &AddonStorageContainer, ws_addons: &mut V
     let addons = addons.clone();
     let ws = ws.clone();
     trace!("spawning workshop task");
-    task::spawn(get_workshop_ids(ws, slice, addons));
+    rt.spawn_blocking(|| get_workshop_ids(ws, slice, addons))
 }
 
 enum WorkerOutput {
@@ -240,19 +248,17 @@ enum WorkerOutput {
     None
 }
 
-async fn get_workshop_ids(ws: Arc<SteamWorkshop>, slice: Vec<String>, addons: AddonStorageContainer) -> WorkerOutput {
+fn get_workshop_ids(ws: Arc<SteamWorkshop>, slice: Vec<String>, addons: AddonStorageContainer) -> WorkerOutput {
     info!("Fetching {} workshop ids", slice.len());
     match ws.get_published_file_details(&slice) {
         Ok(items) => {
-            let addons = addons.lock().await;
-            addons.add_workshop_items(items).await
-                .expect("failed to add workshop items");
+            WorkerOutput::WorkshopItems(items)
         },
         Err(err) => {
-            error!("failed to get workshop ids: {}", err)
+            error!("failed to get workshop ids: {}", err);
+            WorkerOutput::None
         }
     }
-    WorkerOutput::None
 }
 
 #[derive(Serialize, Clone)]
@@ -297,6 +303,7 @@ pub struct ScanResultPayload {
 
 #[derive(Serialize, Clone)]
 #[serde(rename = "snake_case")]
+#[derive(Debug)]
 pub enum ScanResult {
     Updated,
     Renamed,
@@ -306,8 +313,10 @@ pub enum ScanResult {
 async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter: Arc<ScanCounter>) -> WorkerOutput {
     let filename = path.file_name().unwrap().to_string_lossy().to_string();
     counter.total.fetch_add(1, Ordering::Relaxed);
+    debug!("{}", filename);
     match scan_file(path, addons).await {
         Ok((result, data)) => {
+            debug!("{}: {:?}", &filename, result);
             match result {
                 ScanResult::Added => {
                     counter.added.fetch_add(1, Ordering::Relaxed);
@@ -334,6 +343,8 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(Scan
             .map_err(|e| DBError(e))?
     };
 
+    debug!("scan_file {}", filename);
+
     let (info, chapter_ids) = parse_addon(&path).await
         .map_err(|e| ParseError(e))?;
 
@@ -350,6 +361,7 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(Scan
         return Ok((ScanResult::NoAction, None))
     }
 
+
     let mut addons = addons.lock().await;
     // If info has title and version, try to find previous entry and update its filename
     if let Some(title) = &info.title && let Some(version) = &info.version {
@@ -364,6 +376,8 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(Scan
 
     let flags = get_addon_flags(&info);
     let ws_id = find_workshop_id(&path, &info);
+
+    debug!("new {}", filename);
 
     // Treat file as new now
     let data = AddonData {
