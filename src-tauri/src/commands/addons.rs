@@ -18,8 +18,10 @@ pub async fn addons_scan_managed(cfg: State<'_, AppConfigContainer>, scanner: St
         cfg.addons_folder.clone().ok_or_else(|| "no addon folder configured".to_string())?
     };
     let mut scanner = scanner.lock().unwrap();
-    scanner.start_scan(addons_folder);
-    Ok(())
+    match scanner.start_scan(addons_folder) {
+        true => Ok(()),
+        false => Err("A scan is already in progress".to_string())
+    }
 }
 
 #[tauri::command]
