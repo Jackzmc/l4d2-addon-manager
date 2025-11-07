@@ -32,6 +32,11 @@ create table workshop_items
 (
     publishedfileid integer not null,
     title           text    not null,
+    time_updated    text    null,
+    file_size       integer not null,
+    description     text    not null,
+    file_url        text    not null,
+    tags            text    not null, -- comma separate list
     primary key(publishedfileid)
 );
 

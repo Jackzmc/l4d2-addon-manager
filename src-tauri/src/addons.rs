@@ -227,15 +227,20 @@ impl AddonStorage {
 
     pub async fn add_workshop_items(&self, items: Vec<WorkshopItem>) -> Result<(), sqlx::Error> {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO workshop_items (publishedfileid, title) "
+            "INSERT INTO workshop_items (publishedfileid, title, time_updated, file_size, description, file_url, tags) "
         );
         let num_items = items.len();
         query_builder.push_values(items, |mut b, item| {
             b.push_bind(item.publishedfileid)
-                .push_bind(item.title);
+                .push_bind(item.title)
+                .push_bind(item.time_updated as u32)
+                .push_bind(item.file_size)
+                .push_bind(item.description)
+                .push_bind(item.file_url)
+                .push_bind(item.tags.iter().map(|tag| tag.tag.clone()).collect::<Vec<String>>().join(","));
         });
 
-        let mut query = query_builder.build();
+        let query = query_builder.build();
         query.execute(&self.pool).await?;
         info!("Added {} workshop items to database", num_items);
         Ok(())

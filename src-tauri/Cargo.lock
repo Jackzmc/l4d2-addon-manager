@@ -4566,12 +4566,10 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "steam-workshop-api"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df51eb5279f888bba6a0ed1a2af98bd799efe82b43e3b7e67eff72b3ff469460"
+checksum = "71b185f20d39de55b3b517e1f2edb46f61a12a3338535b01cc37581d31a69aa7"
 dependencies = [
- "lazy_static",
- "log",
  "reqwest",
  "serde",
  "serde_json",
