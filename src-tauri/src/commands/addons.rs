@@ -12,7 +12,6 @@ pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>) -> Re
 
 #[tauri::command]
 pub async fn addons_scan_managed(cfg: State<'_, AppConfigContainer>, scanner: State<'_, ScannerContainer>) -> Result<(), String> {
-    debug!("starting scan of addons");
     let addons_folder = {
         let cfg = cfg.lock().await;
         cfg.addons_folder.clone().ok_or_else(|| "no addon folder configured".to_string())?

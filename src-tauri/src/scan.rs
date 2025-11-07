@@ -50,7 +50,7 @@ impl AddonScanner {
     /// When worker tasks complete, any workshop ids to fetch items are sent, and resolved once we have over 100
     /// When all worker tasks done, any remaining workshop items are fetched in batches of 100
     pub fn start_scan(&mut self, path: PathBuf) -> bool {
-        if !self.is_running() { return false; } // ignore if not running
+        if self.is_running() { return false; } // ignore if not running
 
         let addons = self.addons.clone();
         let app = self.app.clone();
