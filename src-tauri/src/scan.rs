@@ -137,7 +137,6 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
         .map(|item| item.unwrap())
         .collect();
 
-
     // Allow aborting early right before we enter the main process loop
     if !running_signal.load(Ordering::SeqCst) {
         info!("Got early abort signal, ending");
@@ -171,6 +170,14 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
     let task_running_signal = running_signal.clone();
     let handle = rt.handle().clone();
     rt.spawn(async move {
+        // Remove any workshop ids from workshop/ folder that we already got:
+        info!("Checking for existing workshop entries");
+        let existing_ws_ids = {
+            let addons = addons.lock().await;
+            addons.list_workshop_ids().await.unwrap_or_default()
+        };
+        let mut ws_addons: Vec<i64> = ws_addons.into_iter().filter(|id| !existing_ws_ids.contains(id)).collect();
+
         let mut is_aborting = false;
         debug!("scan main: waiting for tasks to finish");
         while let Some(Ok(result)) = set.join_next().await {
@@ -179,7 +186,7 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
                     ws_addons.push(workshop_id);
                     // If we got >= 100 workshop ids, while we are still processing, go ahead and fetch them
                     if ws_addons.len() >= 100 {
-                        start_workshop_resolve_task(&addons, &mut ws_addons, &handle, &ws);
+                        start_workshop_resolve_task(&mut ws_addons, &handle, &ws);
                     }
                 },
                 WorkerOutput::WorkshopItems(items ) => add_workshop(&addons, items).await,
@@ -196,7 +203,7 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
         debug!("all tasks complete");
         // All tasks complete, resolve any remaining workshop ids
         while ws_addons.len() > 0 {
-            if let WorkerOutput::WorkshopItems(items) = start_workshop_resolve_task(&addons, &mut ws_addons, &handle, &ws).await.unwrap() {
+            if let WorkerOutput::WorkshopItems(items) = start_workshop_resolve_task(&mut ws_addons, &handle, &ws).await.unwrap() {
                 add_workshop(&addons, items).await;
             }
         }
@@ -221,6 +228,7 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
 }
 
 async fn add_workshop(addons: &AddonStorageContainer, items: Vec<WorkshopItem>) {
+    if items.len() == 0 { return; }
     debug!("got {} items to store", items.len());
     let addons = addons.lock().await;
     addons.add_workshop_items(items).await
@@ -230,15 +238,13 @@ async fn add_workshop(addons: &AddonStorageContainer, items: Vec<WorkshopItem>) 
 
 /// Takes upto 100 ids and spawns new fetch task
 /// Runs on tokio main worker threads to avoid scan aborts dropping it
-fn start_workshop_resolve_task(addons: &AddonStorageContainer, ws_addons: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>) -> tokio::task::JoinHandle<WorkerOutput> {
+fn start_workshop_resolve_task(ws_addons: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>) -> tokio::task::JoinHandle<WorkerOutput> {
     // Steam API only supports upto 100 at a time
     let items_to_drain = 100.min(ws_addons.len()); // drain panics if over len, get smallest
     let slice: Vec<String> = ws_addons.drain(0..items_to_drain).map(|item| item.to_string()).collect();
-
-    let addons = addons.clone();
     let ws = ws.clone();
     trace!("spawning workshop task");
-    rt.spawn_blocking(|| get_workshop_ids(ws, slice, addons))
+    rt.spawn_blocking(|| get_workshop_ids(ws, slice))
 }
 
 enum WorkerOutput {
@@ -250,7 +256,7 @@ enum WorkerOutput {
     None
 }
 
-fn get_workshop_ids(ws: Arc<SteamWorkshop>, slice: Vec<String>, addons: AddonStorageContainer) -> WorkerOutput {
+fn get_workshop_ids(ws: Arc<SteamWorkshop>, slice: Vec<String>) -> WorkerOutput {
     info!("Fetching {} workshop ids", slice.len());
     match ws.get_published_file_details(&slice) {
         Ok(items) => {

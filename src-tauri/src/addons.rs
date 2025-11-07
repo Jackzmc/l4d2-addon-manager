@@ -144,6 +144,16 @@ impl AddonStorage {
             .fetch_all(&self.pool).await
     }
 
+    pub async fn list_workshop_ids(&self) -> Result<Vec<i64>, sqlx::Error> {
+        sqlx::query!(r#"
+                select publishedfileid
+                from workshop_items
+            "#
+        )
+            .map(|row| row.publishedfileid)
+            .fetch_all(&self.pool).await
+    }
+
     pub async fn get_by_filename(&self, filename: &str) -> Result<Option<PartialAddon>, sqlx::Error> {
         sqlx::query_as::<_, PartialAddon>(r#"
                 select
@@ -235,9 +245,10 @@ impl AddonStorage {
         Ok(())
     }
 
+    /// Attempts to add workshop items to db, overwriting existing if found
     pub async fn add_workshop_items(&self, items: Vec<WorkshopItem>) -> Result<(), sqlx::Error> {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO workshop_items (publishedfileid, title, time_updated, file_size, description, file_url, tags) "
+            "INSERT OR REPLACE INTO workshop_items (publishedfileid, title, time_updated, file_size, description, file_url, tags) "
         );
         let num_items = items.len();
         query_builder.push_values(items, |mut b, item| {
