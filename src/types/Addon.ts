@@ -23,7 +23,12 @@ export interface AddonEntry {
 
 export interface WorkshopItem {
     publishedfileid: string,
-    title: string
+    title: string,
+    time_updated: number,
+    file_size: number,
+    description: string,
+    file_url: string,
+    tags: string
 }
 
 export const enum AddonFlags {

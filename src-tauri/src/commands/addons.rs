@@ -12,7 +12,7 @@ pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>) -> Re
 }
 
 #[tauri::command]
-pub async fn addons_list_workshop(addons: State<'_, AddonStorageContainer>) -> Result<Vec<WorkshopEntry>, String> {
+pub async fn addons_list_workshop(addons: State<'_, AddonStorageContainer>) -> Result<Vec<AddonEntry>, String> {
     let addons = addons.lock().await;
     addons.list_workshop().await.map_err(|e| e.to_string())
 }

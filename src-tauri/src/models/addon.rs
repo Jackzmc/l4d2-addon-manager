@@ -25,11 +25,11 @@ pub struct FullAddonWithTagsList {
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct WorkshopEntry {
-    publishedfileid: u32,
-    title: String,
-    time_updated: Option<u32>,
-    file_size: u32,
-    description: String,
-    file_url: String,
-    tags: String
+    pub publishedfileid: u32,
+    pub title: String,
+    pub time_updated: Option<u32>,
+    pub file_size: u32,
+    pub description: String,
+    pub file_url: String,
+    pub tags: String
 }

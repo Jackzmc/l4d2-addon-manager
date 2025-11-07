@@ -32,7 +32,7 @@ create table workshop_items
 (
     publishedfileid integer not null,
     title           text    not null,
-    time_updated    text    null,
+    time_updated    integer    null,
     file_size       integer not null,
     description     text    not null,
     file_url        text    not null,

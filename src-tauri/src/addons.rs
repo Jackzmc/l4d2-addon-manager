@@ -73,7 +73,7 @@ pub struct AddonEntry {
     /// Info about addon and its file
     pub addon: AddonData,
     /// If a workshop entry is linked, its contents here
-    pub workshop_info: Option<steam_workshop_api::WorkshopItem>,
+    pub workshop_info: Option<WorkshopEntry>,
     /// A list of user added tags for entry
     pub tags: Vec<String>,
 }
@@ -108,10 +108,12 @@ impl AddonStorage {
     }
 
     pub async fn list(&self, flags: AddonFlags) -> Result<Vec<AddonEntry>, sqlx::Error> {
+        // TODO: include workshop_items.*
         Ok(sqlx::query_as::<_, FullAddonWithTagsList>(r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
                 from addons
                 left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
+                left join workshop_items wi on wi.publishedfileid = addons.workshop_id
                 group by addons.filename
             "#
         )
@@ -134,14 +136,32 @@ impl AddonStorage {
             .collect::<Vec<AddonEntry>>())
     }
 
-    pub async fn list_workshop(&self) -> Result<Vec<WorkshopEntry>, sqlx::Error> {
-        sqlx::query_as::<_, WorkshopEntry>(r#"
+    pub async fn list_workshop(&self) -> Result<Vec<AddonEntry>, sqlx::Error> {
+        Ok(sqlx::query_as::<_, WorkshopEntry>(r#"
                 select *
                 from workshop_items
                 order by time_updated desc
             "#
         )
-            .fetch_all(&self.pool).await
+            .fetch_all(&self.pool).await?
+            .into_iter().map(|entry| AddonEntry {
+                addon: AddonData {
+                    filename: format!("{}.vpk", entry.publishedfileid),
+                    updated_at: chrono::DateTime::from_timestamp_secs(*entry.time_updated.as_ref().unwrap() as i64).unwrap(),
+                    created_at: chrono::DateTime::from_timestamp_secs(*entry.time_updated.as_ref().unwrap() as i64).unwrap(), // TODO: include?
+                    file_size: entry.file_size as i64,
+                    flags: AddonFlags(0),
+                    title: entry.title.clone(),
+                    author: None, // TODO: include
+                    version: "".to_string(), // TODO: ?something?
+                    tagline: None,
+                    chapter_ids: None,
+                    workshop_id: Some(entry.publishedfileid as i64)
+                },
+                workshop_info: Some(entry),
+                tags: vec![],
+            })
+            .collect::<Vec<AddonEntry>>())
     }
 
     pub async fn list_workshop_ids(&self) -> Result<Vec<i64>, sqlx::Error> {
