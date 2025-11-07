@@ -10,7 +10,7 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use chrono::{DateTime, Utc};
 use l4d2_addon_parser::{AddonInfo, L4D2Addon};
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 use regex::Regex;
 use serde::Serialize;
 use steam_workshop_api::{SteamWorkshop, WorkshopItem};
@@ -154,6 +154,7 @@ fn scan_main_thread(path: PathBuf, abort_signal: Arc<AtomicBool>,addons: AddonSt
     // Spawn a task to await all the other worker tasks
     rt.spawn(async move {
         let mut is_aborting = false;
+        debug!("scan main: waiting for tasks to finish");
         while let Some(Ok(result)) = set.join_next().await {
             match result {
                 WorkerOutput::WorkshopId(workshop_id) => {
@@ -172,7 +173,7 @@ fn scan_main_thread(path: PathBuf, abort_signal: Arc<AtomicBool>,addons: AddonSt
                 is_aborting = true;
             }
         }
-
+        debug!("all tasks complete");
         // All tasks complete, resolve any remaining workshop ids
         while ws_addons.len() > 0 {
             start_workshop_resolve_task(&addons, &mut ws_addons, &mut set, &ws);
@@ -185,9 +186,11 @@ fn scan_main_thread(path: PathBuf, abort_signal: Arc<AtomicBool>,addons: AddonSt
 
         tx.send(()).unwrap();
     });
+    drop(rt);
 
     // Wait until wait task signals it's completion
-    rx.recv().unwrap();
+    debug!("scan main thread sleeping");
+    rx.recv().ok();
     app.emit("scan_state", ScanState::Complete).ok();
     info!("ADDON SCAN COMPLETE. {} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
 }
@@ -196,9 +199,12 @@ fn scan_main_thread(path: PathBuf, abort_signal: Arc<AtomicBool>,addons: AddonSt
 /// Runs on tokio main worker threads to avoid scan aborts dropping it
 fn start_workshop_resolve_task(addons: &AddonStorageContainer, ws_addons: &mut Vec<i64>, set: &mut JoinSet<WorkerOutput>, ws: &Arc<SteamWorkshop>) {
     // Steam API only supports upto 100 at a time
-    let slice: Vec<String> = ws_addons.iter().take(100).map(|item| item.to_string()).collect();
+    let items_to_drain = 100.min(ws_addons.len()); // drain panics if over len, get smallest
+    let slice: Vec<String> = ws_addons.drain(0..items_to_drain).map(|item| item.to_string()).collect();
+
     let addons = addons.clone();
     let ws = ws.clone();
+    trace!("spawning workshop task");
     task::spawn(get_workshop_ids(ws, slice, addons));
 }
 
@@ -212,6 +218,7 @@ enum WorkerOutput {
 }
 
 async fn get_workshop_ids(ws: Arc<SteamWorkshop>, slice: Vec<String>, addons: AddonStorageContainer) -> WorkerOutput {
+    info!("Fetching {} workshop ids", slice.len());
     if let Ok(items) = ws.get_published_file_details(&slice) {
         let addons = addons.lock().await;
         addons.add_workshop_items(items).await
@@ -324,7 +331,6 @@ async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter
     WorkerOutput::None
 }
 async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(ScanResult, Option<AddonData>), ScanError> {
-    debug!("checking {:?}", path);
     let meta = path.metadata().map_err(|e| FileError(e))?;
     let filename = path.file_name().unwrap().to_str().unwrap();
     let addon_entry = {
