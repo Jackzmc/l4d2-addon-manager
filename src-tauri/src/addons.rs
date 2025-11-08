@@ -7,7 +7,7 @@ use chrono::DateTime;
 use l4d2_addon_parser::AddonInfo;
 use log::{info};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Pool, QueryBuilder, SqlSafeStr, Sqlite};
+use sqlx::{FromRow, Pool, QueryBuilder, Sqlite};
 use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
@@ -191,26 +191,6 @@ impl AddonStorage {
                .bind(filename)
                .fetch_optional(&self.pool)
                .await
-    }
-
-    pub async fn get_by_pk(&self, title: &str, version: &str) -> Result<Option<PartialAddon>, sqlx::Error> {
-        sqlx::query_as::<_, PartialAddon>(r#"
-                select
-                    addons.filename,
-                    addons.updated_at, addons.created_at,
-                    addons.file_size, addons.flags,
-                    addons.workshop_id,
-                    GROUP_CONCAT(tags.tag) tags
-                from addons
-                left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
-                where addons.title = ? AND addons.version = ?
-                group by addons.filename
-            "#
-        )
-            .bind(title)
-            .bind(version)
-            .fetch_optional(&self.pool)
-            .await
     }
 
     pub async fn update_entry(&mut self, filename: &str, file_meta: Metadata, addon: AddonInfo) -> Result<(), sqlx::Error> {

@@ -1,8 +1,6 @@
-use log::debug;
 use tauri::State;
 use crate::addons::{AddonEntry, AddonFlags, AddonStorageContainer};
 use crate::cfg::AppConfigContainer;
-use crate::models::addon::WorkshopEntry;
 use crate::scan::ScannerContainer;
 
 #[tauri::command]

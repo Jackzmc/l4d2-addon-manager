@@ -1,25 +1,22 @@
-use std::collections::{HashSet, VecDeque};
-use std::fmt::Display;
-use std::iter::Scan;
-use std::os::unix::fs::MetadataExt;
-use std::path::PathBuf;
-use std::sync::{Arc, LazyLock, Mutex};
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::mpsc::{channel, Sender};
-use std::thread::JoinHandle;
-use std::time::Duration;
+use crate::addons::{AddonData, AddonFlags, AddonStorageContainer};
+use crate::scan::ScanError::{DBError, FileError, NewEntryError, ParseError, UpdateError, UpdateRenameError};
 use chrono::{DateTime, Utc};
 use l4d2_addon_parser::{AddonInfo, L4D2Addon};
 use log::{debug, error, info, trace};
 use regex::Regex;
 use serde::Serialize;
+use std::collections::{VecDeque};
+use std::fmt::Display;
+use std::os::unix::fs::MetadataExt;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::mpsc::{channel};
+use std::sync::{Arc, LazyLock, Mutex};
+use std::thread::JoinHandle;
 use steam_workshop_api::{SteamWorkshop, WorkshopItem};
 use tauri::{AppHandle, Emitter};
-use tokio::{join, task};
 use tokio::runtime::Handle;
 use tokio::task::JoinSet;
-use crate::addons::{AddonData, AddonFlags, AddonStorageContainer};
-use crate::scan::ScanError::{DBError, FileError, NewEntryError, ParseError, UpdateError, UpdateRenameError};
 
 pub struct AddonScanner {
     scan_thread: Option<JoinHandle<()>>,
@@ -30,8 +27,6 @@ pub struct AddonScanner {
 }
 
 pub type ScannerContainer = Mutex<AddonScanner>;
-type ScanQueue = Arc<Mutex<VecDeque<PathBuf>>>;
-
 const NUM_WORKER_THREADS: usize = 1;
 
 impl AddonScanner {
@@ -131,7 +126,7 @@ fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: Addo
     }
 
     // Extract all workshop ids from workshop addons folder
-    let mut ws_addons: Vec<i64> = get_vpks_in_dir(&path.join("workshop"))
+    let ws_addons: Vec<i64> = get_vpks_in_dir(&path.join("workshop"))
         .expect("failed to scan ws dir")
         .into_iter()
         .map(|item| item.file_stem().unwrap().to_string_lossy().parse::<i64>())
