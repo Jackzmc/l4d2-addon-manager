@@ -10,9 +10,9 @@
     <div class="panel-block">
         <br>
     </div>
-    <button class="panel-block" @click="emit('scan')">
+    <a class="panel-block" @click="emit('scan')">
         {{ props.scanActive ? 'Cancel Scan' : 'Start Scan' }}
-    </button>
+    </a>
     <router-link class="panel-block" :to="{ name: 'settings' }">
         Settings
     </router-link>
