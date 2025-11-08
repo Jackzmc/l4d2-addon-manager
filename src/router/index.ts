@@ -1,4 +1,4 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createMemoryHistory, createRouter, createWebHashHistory } from 'vue-router'
 
 import Setup from '../pages/Setup.vue'
 import MainView from '../components/MainView.vue'
@@ -19,7 +19,8 @@ const routes = [
 ]
 
 export const router = createRouter({
-  history: createWebHashHistory(),
+  // history: createWebHashHistory(), // TODO: in future can use this to return to same page - but we need to retrigger init() somehow
+  history: createMemoryHistory(),
   linkActiveClass: "is-active",
   routes,
 })

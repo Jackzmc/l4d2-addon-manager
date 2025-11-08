@@ -1,7 +1,9 @@
+use crate::cfg::StaticData;
 use log::debug;
 use serde::Serialize;
 use tauri::{AppHandle, State};
 use crate::cfg::AppConfigContainer;
+use crate::scan::ScannerContainer;
 use crate::util::SetRoute;
 
 pub mod config;
@@ -10,10 +12,10 @@ pub mod addons;
 #[derive(Serialize)]
 pub struct InitData {
     initial_route: SetRoute,
-    app_version: String
+    data: StaticData,
 }
 #[tauri::command]
-pub async fn init(config: State<'_, AppConfigContainer>, app: AppHandle) -> Result<InitData, String> {
+pub async fn init(config: State<'_, AppConfigContainer>, data: State<'_, StaticData>) -> Result<InitData, String> {
     let config = config.lock().await;
     let route_name = match config.addons_folder {
         Some(_) => {
@@ -30,6 +32,6 @@ pub async fn init(config: State<'_, AppConfigContainer>, app: AppHandle) -> Resu
         initial_route: SetRoute {
             name: Some(route_name.to_string())
         },
-        app_version: "".to_string()
+        data: data.inner().clone(),
     })
 }

@@ -4,6 +4,20 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::async_runtime::Mutex;
 
+#[derive(Serialize, Clone)]
+pub struct StaticData {
+    pub app_version: String,
+    pub git_commit: Option<String>
+}
+impl StaticData {
+    pub fn new(app: &tauri::App) -> Self {
+        Self {
+            app_version: app.package_info().version.to_string(),
+            git_commit: option_env!("GIT_COMMIT").map(|s| s.to_string()),
+        }
+    }
+}
+
 pub type AppConfigContainer = Mutex<AppConfig>;
 
 #[derive(Serialize, Deserialize, Default)]

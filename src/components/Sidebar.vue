@@ -17,8 +17,11 @@
         Settings
     </router-link>
 
-    <footer>
-        v{{ appVersion }}
+    <footer v-if="appData">
+        v{{ appData.app_version }}
+        <template v-if="appData.git_commit">
+            git {{ appData.git_commit }}
+        </template>
     </footer>
 </nav>
 </template>
@@ -49,17 +52,12 @@
 </style>
 
 <script setup lang="ts">
-import { getVersion } from '@tauri-apps/api/app';
-import { onBeforeMount, ref } from 'vue';
-
-const appVersion = ref("")
+import { ref } from 'vue';
+import { StaticAppData } from '../types/App.ts';
 
 const props = defineProps<{
-    scanActive: boolean
+    scanActive: boolean,
+    appData: StaticAppData
 }>()
 const emit = defineEmits(["scan"])
-
-onBeforeMount(async () => {
-    appVersion.value = await getVersion();
-})
 </script>

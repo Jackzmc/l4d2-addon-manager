@@ -12,6 +12,8 @@ import { onMounted, ref } from 'vue';
 import { init } from '../js/tauri.ts';
 import { useRouter } from 'vue-router';
 
+const emit = defineEmits(["init"])
+
 const router = useRouter()
 
 const ellipsCount = ref(3)
@@ -25,6 +27,7 @@ onMounted(async() => {
     setInterval(cycleEllips, 750)
 
     const initData = await init()
+    emit("init", initData)
     router.push({ name: initData.initial_route.name })
 })
 </script>

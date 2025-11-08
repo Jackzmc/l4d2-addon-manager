@@ -1,7 +1,7 @@
 <template>
     <div class="columns is-gapless">
         <div class="column is-3" >
-            <Sidebar @scan="onScanRequest" :scan-active="isScanActive" />
+            <Sidebar @scan="onScanRequest" :scan-active="isScanActive" :app-data="staticData" />
         </div>
         <main class="column mt-3 section-component">
             <router-view v-slot="{ Component }">
@@ -15,9 +15,13 @@
 import Sidebar from '@/components/Sidebar.vue'
 import { notify } from '@kyvg/vue3-notification';
 import { onMounted, ref } from 'vue';
-import { ScanResultEvent, ScanResultMessage, ScanStateEvent } from '../types/App.ts';
+import { ScanResultEvent, ScanResultMessage, ScanStateEvent, StaticAppData } from '../types/App.ts';
 import { listen } from '@tauri-apps/api/event';
 import { abortScan, startScan } from '../js/tauri.ts';
+
+const props = defineProps<{
+    staticData: StaticAppData
+}>()
 
 const view = ref()
 const isScanActive = ref(false)

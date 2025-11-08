@@ -1,24 +1,17 @@
 <template>
   <notifications position="bottom right" :speed="5000" />
-  <router-view />
+  <router-view @init="onInit" :static-data="data" />
 
 </template>
 
 <script setup lang="ts">
-import { listen } from '@tauri-apps/api/event';
 import { onBeforeMount, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { InitAppData, StaticAppData } from './types/App.ts';
 
-const router = useRouter()
-
-onBeforeMount(async() => {
-  console.debug("listening")
-  await listen<string>("set_route", (event) => {
-    console.log("set_route", event)
-    const route = event.payload
-    router.push(route)
-  })
-})
+const data = ref<StaticAppData>()
+function onInit(init: InitAppData) {
+  data.value = init.data
+}
 </script>
 
 <style>

@@ -32,6 +32,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
+            app.manage(cfg::StaticData::new(app));
             let data_dir = app.path().app_local_data_dir().unwrap();
 
             let config = AppConfig::load(data_dir.join("config.json"));
