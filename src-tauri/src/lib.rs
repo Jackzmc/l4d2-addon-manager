@@ -1,10 +1,11 @@
+use log::debug;
 use crate::cfg::AppConfig;
 use crate::commands::config as cmd_config;
 use crate::commands::addons as cmd_addons;
 use std::sync::{Arc};
 use tauri::async_runtime::Mutex;
-use tauri::{Manager};
-use crate::store::{AddonStorage};
+use tauri::{Manager, RunEvent, State, WindowEvent};
+use crate::store::{AddonStorage, AddonStorageContainer};
 use crate::scan::AddonScanner;
 
 pub mod cfg;
@@ -16,7 +17,7 @@ mod scan;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(tauri_plugin_log::log::LevelFilter::Info)
@@ -31,22 +32,21 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
+            let window = app.get_webview_window("main").unwrap();
             let data_dir = app.path().app_local_data_dir().unwrap();
 
             let config = AppConfig::load(data_dir.join("config.json"));
             app.manage(Mutex::new(config));
-
-            tauri::async_runtime::block_on(async move {
+            let db = tauri::async_runtime::block_on(async move {
                 let db = AddonStorage::new(data_dir).await.expect("failed to create db");
                 db.run_migrations().await.expect("migrations failed");
                 let db = Arc::new(Mutex::new(db));
-                app.manage(db.clone());
-
-                let scanner = std::sync::Mutex::new(AddonScanner::new(db, app.handle().clone()));
-                app.manage(scanner);
+                db
             });
+            app.manage(db.clone());
 
-
+            let scanner = std::sync::Mutex::new(AddonScanner::new(db.clone(), app.handle().clone()));
+            app.manage(scanner);
 
             Ok(())
         })
@@ -63,6 +63,19 @@ pub fn run() {
             cmd_addons::addons_disable,
             cmd_addons::addons_delete,
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("error while running tauri application");
+    app.run(|app, event| match event {
+        RunEvent::ExitRequested {..} => {
+            let db = app.state::<AddonStorageContainer>().inner().clone();
+            // let db = db.blocking_lock();
+            tauri::async_runtime::spawn(async move {
+                let db = db.lock().await;
+                debug!("cleaning up db...");
+                db.close().await;
+                debug!("cleaning up db... done");
+            });
+        },
+        _ => {}
+    })
 }

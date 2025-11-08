@@ -100,6 +100,10 @@ impl AddonStorage {
         })
     }
 
+    pub async fn close(&self) {
+        self.pool.close().await;
+    }
+
     pub async fn run_migrations(&self) -> Result<(), sqlx::Error> {
         info!("Running migrations");
         sqlx::migrate!("./migrations").run(&self.pool).await?;

@@ -16,6 +16,10 @@
     <router-link class="panel-block" :to="{ name: 'settings' }">
         Settings
     </router-link>
+
+    <footer>
+        v{{ appVersion }}
+    </footer>
 </nav>
 </template>
 
@@ -37,11 +41,25 @@
 .sidebar {
     border: 1px solid lightgray;
 }
+.sidebar footer {
+    position: absolute;
+    bottom: 0;
+    padding-left: 5px;
+}
 </style>
 
 <script setup lang="ts">
+import { getVersion } from '@tauri-apps/api/app';
+import { onBeforeMount, ref } from 'vue';
+
+const appVersion = ref("")
+
 const props = defineProps<{
     scanActive: boolean
 }>()
 const emit = defineEmits(["scan"])
+
+onBeforeMount(async () => {
+    appVersion.value = await getVersion();
+})
 </script>
