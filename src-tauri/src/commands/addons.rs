@@ -36,3 +36,24 @@ pub async fn addons_abort_scan(scanner: State<'_, ScannerContainer>, reason: Opt
     scanner.abort(reason);
     Ok(())
 }
+
+#[tauri::command]
+pub async fn addons_migrate(ids: Vec<i64>) -> Result<(), String> {
+    Err("not implemented".to_string())
+}
+
+#[tauri::command]
+pub async fn addons_unsubscribe(ids: Vec<i64>) -> Result<(), String> {
+    Err("not implemented".to_string())
+}
+
+
+#[tauri::command]
+pub async fn addons_disable(filenames: Vec<String>) -> Result<(), String> {
+    Err("not implemented".to_string())
+}
+
+#[tauri::command]
+pub async fn addons_delete(filenames: Vec<String>) -> Result<(), String> {
+    Err("not implemented".to_string())
+}

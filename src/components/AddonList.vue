@@ -6,7 +6,7 @@
                 <div class="level">
                     <div class="level-left">
                         <template v-if="selectedCount > 0">
-                            <slot name="select-buttons" />
+                            <slot name="select-buttons" :selected="selectedAddons" />
                         </template>
                     </div>
                     <div class="level-right">
@@ -64,28 +64,28 @@ const selected = ref<Record<string, boolean>>({})
 const selectedEntry = ref<AddonEntry|null>(null)
 
 const selectedCount = computed(() => {
-    return Object.values(selected.value).filter(selected => selected).length
+    return selectedAddons.value.length
+})
+const selectedAddons = computed(() => {
+    return Object.entries(selected.value)
+        .filter(([, val]) => val)
+        .map(([key]) => key)
 })
 function setDetailAddon(entry: AddonEntry | null) {
     selectedEntry.value = entry
-    console.debug("selected", entry?.addon.filename)
 }
 function setSelected(entry: AddonEntry, value: boolean) {
-    selected.value[entry.addon.title] = value
-    console.log("setSelected", entry.addon.title, value)
+    selected.value[entry.addon.filename] = value
 }
 function isSelected(entry: AddonEntry): boolean {
-    return !!selected.value[entry.addon.title]
+    return !!selected.value[entry.addon.filename]
 }
 function toggleSelectAll(event: InputEvent) {
     const state = (event.target as HTMLInputElement).checked
-    console.debug("select", event)
     const val: Record<string, boolean> = {}
-    // TODO: unselect
     for(const entry of props.addons) {
-        val[entry.addon.title] = state
+        val[entry.addon.filename] = state
     }
     selected.value = val
-    console.debug("selected all")
 }
 </script>

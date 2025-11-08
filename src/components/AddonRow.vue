@@ -1,7 +1,7 @@
 <template>
 <tr class="row">
     <td>
-        <input type="checkbox" class="checkbox large" @change="emit('select')" :checked="selected" />
+        <input v-if="props.entry.addon.filename" type="checkbox" class="checkbox large" @change="emit('select')" :checked="selected" />
     </td>
     <td>
         <a @click="showDetails">{{ entry.addon.title }}</a>

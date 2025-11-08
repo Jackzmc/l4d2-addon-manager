@@ -41,3 +41,19 @@ export async function startScan(): Promise<void> {
 export async function abortScan(reason?: string): Promise<void> {
     return await tryInvoke("addons_abort_scan", { reason })
 }
+
+export async function migrateWorkshopAddons(ids: number[]): Promise<void> {
+    return await tryInvoke("addons_migrate", { ids })
+}
+
+export async function unsubscribeAddons(ids: number[]): Promise<void> {
+    return await tryInvoke("addons_unsubscribe", { ids })
+}
+
+export async function disableAddons(filenames: string[]): Promise<void> {
+    return await tryInvoke("addons_disable", { filenames })
+}
+
+export async function deleteAddons(filenames: string[]): Promise<void> {
+    return await tryInvoke("addons_delete", { filenames })
+}

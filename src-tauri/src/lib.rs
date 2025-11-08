@@ -58,6 +58,10 @@ pub fn run() {
             cmd_addons::addons_list_workshop,
             cmd_addons::addons_start_scan,
             cmd_addons::addons_abort_scan,
+            cmd_addons::addons_migrate,
+            cmd_addons::addons_unsubscribe,
+            cmd_addons::addons_disable,
+            cmd_addons::addons_delete,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
