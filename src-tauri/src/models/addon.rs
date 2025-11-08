@@ -1,7 +1,7 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use crate::addons::{AddonData};
+use crate::store::{AddonData};
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct PartialAddon {

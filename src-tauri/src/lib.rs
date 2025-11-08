@@ -4,13 +4,13 @@ use crate::commands::addons as cmd_addons;
 use std::sync::{Arc};
 use tauri::async_runtime::Mutex;
 use tauri::{Manager};
-use crate::addons::{AddonStorage};
+use crate::store::{AddonStorage};
 use crate::scan::AddonScanner;
 
 pub mod cfg;
 mod commands;
 pub mod util;
-mod addons;
+mod store;
 mod models;
 mod scan;
 

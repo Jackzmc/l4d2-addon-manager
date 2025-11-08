@@ -5,7 +5,7 @@ pub mod commands;
 pub mod cfg;
 pub mod util;
 
-mod addons;
+mod store;
 mod models;
 
 mod scan;

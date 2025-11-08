@@ -1,5 +1,5 @@
 use tauri::State;
-use crate::addons::{AddonEntry, AddonFlags, AddonStorageContainer};
+use crate::store::{AddonEntry, AddonFlags, AddonStorageContainer};
 use crate::cfg::AppConfigContainer;
 use crate::scan::ScannerContainer;
 
