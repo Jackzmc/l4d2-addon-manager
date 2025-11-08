@@ -1,7 +1,29 @@
-# Tauri + Vue + TypeScript
+# L4D2 Addon Manager
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+A cross-platform app that lets you manage your l4d2 addons with ease, allowing you to quickly add, delete, disable, and search your long list of addons.
+In addition, let's you quickly offload workshop addons to be manually installed, allowing them to be loaded instantly on game startup.
 
-## Recommended IDE Setup
+Currently in development and only tested running on linux
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Current Features:
+
+* Speedy addon list
+* Scanning system that extracts data from addon files
+  * Addon types (campaign, scripts, skins, weapons, sounds, etc)
+  * Coop campaign chapter ids
+
+## Future Work
+
+* User tagging of addons
+* Downloading new addons from workshop
+* Updating manual addons
+* Profiles (sets of addons)
+* Testing on Windows
+
+## Preview
+
+![preview.png](images/preview.png)
+
+## License
+
+MIT
