@@ -1,5 +1,10 @@
 <template>
-    <AddonList :addons="addons" @refresh="refresh" />
+    <AddonList workshop :addons="addons" @refresh="refresh">
+        <template #select-buttons>
+            <button class="level-item button is-warning" @click="refresh">Move to managed</button>
+            <button class="level-item button is-link">Unsubscribe</button>
+        </template>
+    </AddonList>
     <p class="has-text-centered my-6" v-if="addons.length === 0">
         No addons found
     </p>

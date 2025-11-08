@@ -1,5 +1,5 @@
 import { invoke, InvokeArgs, InvokeOptions } from '@tauri-apps/api/core'
-import { Addon, AddonEntry } from '../types/Addon.ts';
+import { AddonEntry } from '../types/Addon.ts';
 import { notify } from '@kyvg/vue3-notification';
 import { InitAppData } from '../types/App.ts';
 
@@ -34,6 +34,10 @@ export async function init(): Promise<InitAppData> {
 }
 
 
-export async function scanAddons(): Promise<void> {
+export async function startScan(): Promise<void> {
     return await tryInvoke("addons_start_scan")
+}
+
+export async function abortScan(reason?: string): Promise<void> {
+    return await tryInvoke("addons_abort_scan", { reason })
 }

@@ -6,9 +6,13 @@ export interface InitAppData {
     initial_route: SetRoute
 }
 
-export type ScanStateEvent = ScanStateEvent_Started | ScanStateEvent_Complete
+export type ScanStateEvent = ScanStateEvent_Started | ScanStateEvent_Aborted | ScanStateEvent_Complete
 export interface ScanStateEvent_Started {
     state: "started"
+}
+export interface ScanStateEvent_Aborted {
+    state: "aborted",
+    reason?: string
 }
 export interface ScanStateEvent_Complete {
     state: "complete",

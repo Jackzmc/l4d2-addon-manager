@@ -49,7 +49,7 @@ impl AddonScanner {
     /// All addons/*.vpk have a task spawned in (NUM_WORKER_THREADS) task threads
     /// When worker tasks complete, any workshop ids to fetch items are sent, and resolved once we have over 100
     /// When all worker tasks done, any remaining workshop items are fetched in batches of 100
-    pub fn start_scan(&mut self, path: PathBuf) -> bool {
+    pub fn start(&mut self, path: PathBuf) -> bool {
         if self.is_running() { return false; } // ignore if not running
 
         let addons = self.addons.clone();
@@ -61,7 +61,7 @@ impl AddonScanner {
             .spawn( || scan_main_thread(path, running_signal, addons, app)).unwrap());
         true
     }
-    pub fn abort_scan(&mut self) {
+    pub fn abort(&mut self, reason: Option<String>) {
         if !self.is_running() { return; } // ignore if not running
 
         // this tells thread to abort, but reusing the same signal does
@@ -69,6 +69,9 @@ impl AddonScanner {
         // wait for thread to end
         self.scan_thread.take().unwrap().join().unwrap();
         info!("Scan aborted");
+        self.app.emit("scan_state", ScanState::Aborted {
+            reason
+        }).ok();
     }
 
     /// Is a scan running
@@ -274,6 +277,9 @@ fn get_workshop_ids(ws: Arc<SteamWorkshop>, slice: Vec<String>) -> WorkerOutput 
 #[serde(tag = "state")]
 pub enum ScanState {
     Started,
+    Aborted {
+        reason: Option<String>
+    },
     Complete {
         total: u32,
         added: u32,

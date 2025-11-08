@@ -1,7 +1,7 @@
 <template>
     <div class="columns is-gapless">
         <div class="column is-3" >
-            <Sidebar @refresh-list="onRefreshRequest" />
+            <Sidebar @scan="onScanRequest" :scan-active="isScanActive" />
         </div>
         <main class="column mt-3 section-component">
             <router-view v-slot="{ Component }">
@@ -17,31 +17,52 @@ import { notify } from '@kyvg/vue3-notification';
 import { onMounted, ref } from 'vue';
 import { ScanResultEvent, ScanResultMessage, ScanStateEvent } from '../types/App.ts';
 import { listen } from '@tauri-apps/api/event';
-import { scanAddons } from '../js/tauri.ts';
+import { abortScan, startScan } from '../js/tauri.ts';
 
 const view = ref()
+const isScanActive = ref(false)
 
-
-// If a refresh is requested (from sidebar), tell child to refresh, if they can
-function onRefreshRequest() {
-    if(view.value.refresh) {
+// tell child to refresh, if they can
+function triggerPageRefresh() {
+    if(view.value?.refresh) {
         view.value.refresh()
+    }
+}
+
+async function onScanRequest() {
+    if(isScanActive.value) {
+        await abortScan("requested by user")
+    } else {
+        await startScan()
     }
 }
 
 onMounted(async() => {
     await listen<ScanStateEvent>("scan_state", (event) => {
-        console.log(event)
-        notify({
-            type: "info",
-            title: `Scan ${event.payload.state}`,
-            text: event.payload.state === "complete" 
-                ? `${event.payload.total} files scanned, ${event.payload.added} new addons found, ${event.payload.failed} errors` 
-                : ""
-        })
-        // Trigger refresh if scan complete
-        if(event.payload.state == "complete") {
-            onRefreshRequest()
+        console.debug("scan_state", event)
+        if(event.payload.state === "started") {
+            notify({
+                type: "info",
+                title: `Scan started`,
+                text: "Scan has started in the background"
+            })
+            isScanActive.value = true
+        } else if(event.payload.state === "aborted") {
+            notify({
+                type: "warn",
+                title: `Scan cancelled`,
+                text: `Reason: ${event.payload.reason ?? "(None)"}`
+            })
+            isScanActive.value = false
+        } else if(event.payload.state === "complete") {
+            const type = event.payload.failed > 0 ? "warn" : "success"
+            notify({
+                type: type,
+                title: `Scan complete ${(event.payload.failed > 0 ) ? 'with errors' : ''}`,
+                text: `${event.payload.total} files scanned, ${event.payload.added} new addons found, ${event.payload.failed} errors`
+            })
+            triggerPageRefresh()
+            isScanActive.value = false
         }
     })
 
@@ -56,7 +77,7 @@ onMounted(async() => {
         }
     })
 
-    scanAddons()
+    startScan()
 })
 </script>
 

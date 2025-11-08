@@ -5,14 +5,14 @@
     </td>
     <td>
         <a @click="showDetails">{{ entry.addon.title }}</a>
-        <div class="tags" v-if="entry.tags.length > 0">
-            <span class="tag" v-for="tag in entry.tags" :key="tag">{{ tag }}</span>
+        <div class="tags" v-if="tags.length > 0">
+            <span class="tag has-background-primary-light" v-for="tag in tags" :key="tag">{{ tag }}</span>
         </div>
     </td>
     <td>{{ formatSize(entry.addon.file_size) }}</td>
-    <td><span class="tags" v-if="flags.length > 0">
-        <span class="tag is-sucess" v-for="flag in flags" :key="flag">{{ flag }}</span>
-    </span></td>
+    <!-- <td v-if="!workshop"><span class="tags" v-if="tags.length > 0">
+        <span class="tag is-sucess" v-for="flag in tags" :key="flag">{{ flag }}</span>
+    </span></td> -->
 </tr>
 </template>
 
@@ -25,12 +25,13 @@ import { getAddonContents } from '../js/app.ts';
 
 const emit = defineEmits(["select", "showDetails"])
 
-const flags = computed(() => {
-    return getAddonContents(props.entry.addon.flags)
+const tags = computed(() => {
+    return props.workshop ? props.entry.tags : getAddonContents(props.entry.addon.flags)
 })
 
 const props = defineProps<{
     entry: AddonEntry,
+    workshop?: boolean,
     selected: boolean
 }>()
 

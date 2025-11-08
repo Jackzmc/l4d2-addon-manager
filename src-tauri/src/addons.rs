@@ -147,19 +147,19 @@ impl AddonStorage {
             .into_iter().map(|entry| AddonEntry {
                 addon: AddonData {
                     filename: format!("{}.vpk", entry.publishedfileid),
-                    updated_at: chrono::DateTime::from_timestamp_secs(*entry.time_updated.as_ref().unwrap() as i64).unwrap(),
-                    created_at: chrono::DateTime::from_timestamp_secs(*entry.time_updated.as_ref().unwrap() as i64).unwrap(), // TODO: include?
+                    created_at: chrono::DateTime::from_timestamp_secs(entry.time_created).unwrap(),
+                    updated_at: chrono::DateTime::from_timestamp_secs(*entry.time_updated.as_ref().unwrap()).unwrap(),
                     file_size: entry.file_size as i64,
                     flags: AddonFlags(0),
                     title: entry.title.clone(),
-                    author: None, // TODO: include
-                    version: "".to_string(), // TODO: ?something?
+                    author: Some(entry.creator_id.to_string()),
+                    version: "workshop".to_string(),
                     tagline: None,
                     chapter_ids: None,
                     workshop_id: Some(entry.publishedfileid as i64)
                 },
+                tags: entry.tags.split(',').map(|s| s.to_string()).collect(),
                 workshop_info: Some(entry),
-                tags: vec![],
             })
             .collect::<Vec<AddonEntry>>())
     }
@@ -268,16 +268,18 @@ impl AddonStorage {
     /// Attempts to add workshop items to db, overwriting existing if found
     pub async fn add_workshop_items(&self, items: Vec<WorkshopItem>) -> Result<(), sqlx::Error> {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT OR REPLACE INTO workshop_items (publishedfileid, title, time_updated, file_size, description, file_url, tags) "
+            "INSERT OR REPLACE INTO workshop_items (publishedfileid, title, time_created, time_updated, file_size, description, file_url, creator_id, tags) "
         );
         let num_items = items.len();
         query_builder.push_values(items, |mut b, item| {
             b.push_bind(item.publishedfileid)
                 .push_bind(item.title)
-                .push_bind(item.time_updated as u32)
+                .push_bind(item.time_created as i64)
+                .push_bind(item.time_updated as i64)
                 .push_bind(item.file_size)
                 .push_bind(item.description)
                 .push_bind(item.file_url)
+                .push_bind(item.creator)
                 .push_bind(item.tags.iter().map(|tag| tag.tag.clone()).collect::<Vec<String>>().join(","));
         });
 

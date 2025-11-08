@@ -1,5 +1,10 @@
 <template>
-    <AddonList :addons="addons" @refresh="refresh" />
+    <AddonList :addons="addons" @refresh="refresh">
+        <template #select-buttons>
+            <button class="level-item button" @click="refresh">Disable</button>
+            <button class="level-item button" @click="refresh">Delete</button>
+        </template>
+    </AddonList>
     <p class="has-text-centered my-6" v-if="addons.length === 0">
         No addons found
     </p>

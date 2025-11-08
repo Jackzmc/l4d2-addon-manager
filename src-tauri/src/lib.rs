@@ -55,8 +55,9 @@ pub fn run() {
             cmd_config::choose_game_folder,
             cmd_config::set_game_folder,
             cmd_addons::addons_list_managed,
-            cmd_addons::addons_start_scan,
             cmd_addons::addons_list_workshop,
+            cmd_addons::addons_start_scan,
+            cmd_addons::addons_abort_scan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -61,7 +61,12 @@
         </tr>
         <tr>
             <td><b>Workshop ID</b></td>
-            <td v-if="props.entry.addon.workshop_id">{{ props.entry.addon.workshop_id}}</td>
+            <td v-if="props.entry.addon.workshop_id">
+                {{ props.entry.addon.workshop_id}}
+                <a :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + props.entry.addon.workshop_id" target="_blank">
+                    (View on Steam Workshop)
+                </a>
+            </td>
             <td v-else><em>not set</em> <a>(Click to set)</a></td>
         </tr>
     </tbody>

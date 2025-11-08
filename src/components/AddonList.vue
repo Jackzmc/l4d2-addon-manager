@@ -2,17 +2,14 @@
 <table class="table is-fullwidth has-sticky-header mb-4">
     <thead>
         <tr>
-            <td colspan="5">
+            <td colspan="4">
                 <div class="level">
                     <div class="level-left">
                         <template v-if="selectedCount > 0">
-                            <button class="level-item button" @click="refresh">Disable</button>
-                            <button class="level-item button" @click="refresh">Delete</button>
+                            <slot name="select-buttons" />
                         </template>
                     </div>
                     <div class="level-right">
-                        <button class="level-item button is-link" @click="refresh">Refresh</button>
-                        <button class="level-item button is-link" @click="startScan">Rescan</button>
                     </div>
                 </div>
             </td>
@@ -22,14 +19,14 @@
                 <input type="checkbox" class="checkbox large" @input="toggleSelectAll" />
             </th>
             <th>Addon</th>
-            <th>Size</th>
-            <th>Content</th>
+            <th style="min-width:8em">Size</th>
         </tr>
     </thead>
     <tbody>
         <AddonRow v-for="entry in props.addons" :key="entry.addon.filename" 
             :entry="entry" 
             :selected="isSelected(entry)"
+            :workshop="workshop"
             @show-details="setDetailAddon(entry)"
             @select="setSelected(entry, !isSelected(entry))"
         />
@@ -51,8 +48,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { notify } from '@kyvg/vue3-notification';
-import { scanAddons } from '../js/tauri.ts';
 import { AddonEntry } from '../types/Addon.ts';
 import AddonRow from './AddonRow.vue';
 import ModalCard from './ModalCard.vue';
@@ -61,7 +56,8 @@ import AddonInfoTable from './AddonInfoTable.vue';
 const emit = defineEmits(["refresh"])
 
 const props = defineProps<{
-    addons: AddonEntry[]
+    addons: AddonEntry[],
+    workshop?: boolean
 }>()
 
 const selected = ref<Record<string, boolean>>({})
@@ -70,26 +66,6 @@ const selectedEntry = ref<AddonEntry|null>(null)
 const selectedCount = computed(() => {
     return Object.values(selected.value).filter(selected => selected).length
 })
-
-function refresh() {
-    emit("refresh")
-}
-async function startScan() {
-    try {
-        await scanAddons()
-        notify({
-            type: "info",
-            title: "Scan started",
-            text: "Scan has started in the background. This may take some time."
-        })
-    } catch(err: any) {
-        notify({
-            type: "error",
-            title: "Scan failed",
-            text: err.message ?? err
-        })
-    }
-}
 function setDetailAddon(entry: AddonEntry | null) {
     selectedEntry.value = entry
     console.debug("selected", entry?.addon.filename)
