@@ -1,5 +1,5 @@
 <template>
-<tr class="row">
+<tr :class="['row', {'has-background-danger-light': !props.entry.addon.filename }]">
     <td>
         <input v-if="props.entry.addon.filename" type="checkbox" class="checkbox large" @change="emit('select')" :checked="selected" />
     </td>

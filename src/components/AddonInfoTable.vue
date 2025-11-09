@@ -13,7 +13,11 @@
         </tr>
         <tr>
             <td><b>Filename</b></td>
-            <td>{{ props.entry.addon.filename }}</td>
+            <td v-if="props.entry.addon.filename">{{ props.entry.addon.filename }}</td>
+            <td v-else class="has-text-danger">
+                Missing
+                <!-- <a>(Select file)</a> -->
+            </td>
         </tr>
         <tr>
             <td><b>Created</b></td>

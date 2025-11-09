@@ -54,8 +54,8 @@ export async function unsubscribeAddons(ids: number[]): Promise<void> {
     return await tryInvoke("addons_unsubscribe", { ids })
 }
 
-export async function disableAddons(filenames: string[]): Promise<void> {
-    return await tryInvoke("addons_disable", { filenames })
+export async function setAddonState(filenames: string[], state: boolean): Promise<void> {
+    return await tryInvoke("addons_set_state", { filenames, state })
 }
 
 export async function deleteAddons(filenames: string[]): Promise<void> {

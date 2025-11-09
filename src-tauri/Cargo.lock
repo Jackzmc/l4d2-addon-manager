@@ -2351,7 +2351,7 @@ dependencies = [
  "chrono",
  "l4d2_addon_parser",
  "log",
- "rand 0.8.5",
+ "rand 0.9.2",
  "regex",
  "serde",
  "serde_json",
@@ -2369,8 +2369,8 @@ dependencies = [
 
 [[package]]
 name = "l4d2_addon_parser"
-version = "1.1.0"
-source = "git+https://git.jackz.me/jackz/l4d2-addon-parser.git#4418b3f807c30e2b0df2ca964aebde9478e03289"
+version = "1.2.1"
+source = "git+https://git.jackz.me/jackz/l4d2-addon-parser.git#466f0e16dcca1ff01aa7bc2c664d150a325216d2"
 dependencies = [
  "keyvalues-serde",
  "log",

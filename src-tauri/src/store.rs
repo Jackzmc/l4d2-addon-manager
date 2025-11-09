@@ -12,7 +12,6 @@ use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
 use tauri::async_runtime::Mutex;
-use rand::random;
 use crate::models::addon::{FullAddonWithTagsList, PartialAddon, WorkshopEntry};
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -221,6 +220,7 @@ impl AddonStorage {
 
     /// Update the entry by its primary key. Returns boolean if an entry existed and had its filename changed, false if not
     pub async fn update_entry_pk(&mut self, title: &str, version: &str, new_filename: &str, scan_id: Option<u32>) -> Result<bool, sqlx::Error> {
+        // TODO: where count(*) is 1? if possible? to prevent multiple entries with same title/version
         let affected = sqlx::query!(
             "UPDATE addons SET filename = ?, scan_id = ? WHERE title = ? AND version = ?",
             new_filename,

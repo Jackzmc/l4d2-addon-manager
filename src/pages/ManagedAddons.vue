@@ -2,7 +2,8 @@
 <div>
     <AddonList :addons="addons" @refresh="refresh">
         <template #select-buttons="{selected}">
-            <button class="level-item button is-warning" @click="onDisablePressed(selected)">Disable</button>
+            <button class="level-item button is-success" @click="onSetStatePressed(selected, true)">Enable</button>
+            <button class="level-item button is-warning" @click="onSetStatePressed(selected, false)">Disable</button>
             <button class="level-item button is-danger" @click="onDeletePressed(selected)">Delete</button>
         </template>
     </AddonList>
@@ -15,7 +16,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { AddonEntry } from '../types/Addon.ts';
-import { deleteAddons, disableAddons, listAddons } from '../js/tauri.ts';
+import { deleteAddons, setAddonState, listAddons } from '../js/tauri.ts';
 import AddonList from '../components/AddonList.vue';
 
 const addons = ref<AddonEntry[]>([])
@@ -25,8 +26,8 @@ async function refresh() {
     console.debug("got addons", addons.value)
 }
  
-async function onDisablePressed(filenames: string[]) {
-    await disableAddons(filenames)
+async function onSetStatePressed(filenames: string[], state: boolean) {
+    await setAddonState(filenames, state)
 }
 
 async function onDeletePressed(filenames: string[]) {

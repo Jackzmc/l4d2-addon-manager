@@ -1,3 +1,5 @@
+use l4d2_addon_parser::addon_list::AddonList;
+use std::path::PathBuf;
 use std::time::Duration;
 use log::{debug, error, info};
 use serde::Serialize;
@@ -116,11 +118,20 @@ pub async fn addons_unsubscribe(ids: Vec<i64>, cfg: State<'_, AppConfigContainer
 }
 
 #[tauri::command]
-pub async fn addons_disable(cfg: State<'_, AppConfigContainer>, filenames: Vec<String>) -> Result<(), String> {
+pub async fn addons_set_state(cfg: State<'_, AppConfigContainer>, filenames: Vec<String>, state: bool) -> Result<(), String> {
     // ASSUMPTION: Only running for addons in main folder, not workshop folder
-
+    let addonslist_path = {
+        let cfg = cfg.lock().await;
+        cfg.addons_folder.as_ref().ok_or("addons folder missing".to_string())?.parent().unwrap().join("addonlist.txt")
+    };
+    debug!("addonlist.txt at {:?}", addonslist_path);
     // TODO: test disabling it via addonlist.txt (if it gets overwritten, works). if not then .disabled suffix
-    todo!()
+    let mut list = AddonList::new(&addonslist_path).map_err(|e| format!("failed to check state: {}", e))?;
+    for filename in filenames {
+        debug!("{} state = {}", filename, list.is_enabled(&filename));
+        list.set_enabled(filename, state).map_err(|e| format!("failed to set state {}", e))?;
+    }
+    Ok(())
 }
 
 #[tauri::command]

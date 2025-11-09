@@ -62,7 +62,7 @@ pub fn run() {
             cmd_addons::addons_abort_scan,
             cmd_addons::addons_migrate,
             cmd_addons::addons_unsubscribe,
-            cmd_addons::addons_disable,
+            cmd_addons::addons_set_state,
             cmd_addons::addons_delete,
         ])
         .build(tauri::generate_context!())
