@@ -1,6 +1,6 @@
 [package]
 name = "l4d2-addon-manager"
-version = "2.0.0"
+version = "2.0.0-beta"
 description = "Manage L4D2 Addons with ease"
 authors = ["jackzmc"]
 edition = "2024"

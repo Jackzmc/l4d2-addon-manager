@@ -55,3 +55,14 @@ pub async fn set_game_folder(
     cfg.save();
     Ok(())
 }
+#[tauri::command]
+pub async fn set_apikey(
+    cfg: State<'_, AppConfigContainer>,
+    key: Option<String>
+) -> Result<(), String> {
+    let mut cfg = cfg.lock().await;
+    cfg.steam_apikey = key;
+    cfg.save();
+    Ok(())
+}
+

@@ -54,6 +54,7 @@ pub fn run() {
             commands::init,
             cmd_config::choose_game_folder,
             cmd_config::set_game_folder,
+            cmd_config::set_apikey,
             cmd_addons::addons_list_managed,
             cmd_addons::addons_list_workshop,
             cmd_addons::addons_start_scan,

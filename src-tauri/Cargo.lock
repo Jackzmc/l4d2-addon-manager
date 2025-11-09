@@ -2261,7 +2261,7 @@ dependencies = [
 
 [[package]]
 name = "l4d2-addon-manager"
-version = "2.0.0"
+version = "2.0.0-beta"
 dependencies = [
  "bitflags 2.10.0",
  "chrono",
