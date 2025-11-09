@@ -45,6 +45,7 @@ pub async fn init(config: State<'_, AppConfigContainer>, data: State<'_, StaticD
     })
 }
 
+// TODO: move all this to export module, with proper multithreading for with_addons
 #[tauri::command]
 pub async fn export(app: AppHandle, data: State<'_, StaticData>, config: State<'_, AppConfigContainer>, with_addons: bool) -> Result<PathBuf, String> {
     let save_path = app

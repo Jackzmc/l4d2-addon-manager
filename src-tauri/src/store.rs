@@ -12,6 +12,7 @@ use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
 use tauri::async_runtime::Mutex;
+use rand::random;
 use crate::models::addon::{FullAddonWithTagsList, PartialAddon, WorkshopEntry};
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -200,15 +201,16 @@ impl AddonStorage {
                .await
     }
 
-    pub async fn update_entry(&mut self, filename: &str, file_meta: Metadata, addon: AddonInfo) -> Result<(), sqlx::Error> {
+    pub async fn update_entry(&mut self, filename: &str, file_meta: Metadata, addon: AddonInfo, scan_id: Option<u32>) -> Result<(), sqlx::Error> {
         let last_modified: DateTime<Utc> = file_meta.modified().unwrap().into();
         let size = file_meta.size() as i64;
         sqlx::query!(
-            "UPDATE addons SET file_size = ?, updated_at = ?, title = ?, version = ? WHERE filename = ?",
+            "UPDATE addons SET file_size = ?, updated_at = ?, title = ?, version = ?, scan_id = ? WHERE filename = ?",
             size,
             last_modified,
             addon.title,
             addon.version,
+            scan_id,
             filename
         )
             .execute(&self.pool)
@@ -218,10 +220,11 @@ impl AddonStorage {
 
 
     /// Update the entry by its primary key. Returns boolean if an entry existed and had its filename changed, false if not
-    pub async fn update_entry_pk(&mut self, title: &str, version: &str, new_filename: &str) -> Result<bool, sqlx::Error> {
+    pub async fn update_entry_pk(&mut self, title: &str, version: &str, new_filename: &str, scan_id: Option<u32>) -> Result<bool, sqlx::Error> {
         let affected = sqlx::query!(
-            "UPDATE addons SET filename = ? WHERE title = ? AND version = ?",
+            "UPDATE addons SET filename = ?, scan_id = ? WHERE title = ? AND version = ?",
             new_filename,
+            scan_id,
             title,
             version
         )
@@ -231,11 +234,11 @@ impl AddonStorage {
         Ok(affected > 0)
     }
 
-    pub async fn add_entry(&self, addon: &AddonData) -> Result<(), sqlx::Error> {
+    pub async fn add_entry(&self, addon: &AddonData, scan_id: Option<u32>) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"INSERT INTO addons
-                (filename, updated_at, created_at, file_size, title, author, version, tagline, flags, workshop_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (filename, updated_at, created_at, file_size, title, author, version, tagline, flags, workshop_id, scan_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
             addon.filename,
             addon.updated_at,
@@ -246,7 +249,8 @@ impl AddonStorage {
             addon.version,
             addon.tagline,
             addon.flags.0,
-            addon.workshop_id
+            addon.workshop_id,
+            scan_id
         ).execute(&self.pool).await?;
         info!("Added entry {} (flags={}) (ws_id={:?}) (title={})", addon.filename, addon.flags.0, addon.workshop_id, addon.title);
         Ok(())
@@ -275,5 +279,14 @@ impl AddonStorage {
         info!("Added {} workshop items to database", num_items);
         Ok(())
     }
+
+    /// Sets filenames to null for any entry that does not match scan_id
+    /// To be called at end of scan
+    pub async fn scan_mark_missing(&self, id: u32) -> Result<(), sqlx::Error> {
+        sqlx::query!("UPDATE addons SET filename = NULL WHERE scan_id != ?", id)
+            .execute(&self.pool).await?;
+        Ok(())
+    }
+
 }
 

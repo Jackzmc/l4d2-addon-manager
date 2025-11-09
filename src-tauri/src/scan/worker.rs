@@ -26,11 +26,11 @@ pub(super) enum WorkerOutput {
     None
 }
 
-pub(super) async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter: Arc<ScanCounter>) -> WorkerOutput {
+pub(super) async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter: Arc<ScanCounter>, scan_id: u32) -> WorkerOutput {
     let filename = path.file_name().unwrap().to_string_lossy().to_string();
     counter.total.fetch_add(1, Ordering::Relaxed);
     debug!("{}", filename);
-    match scan_file(path, addons).await {
+    match scan_file(path, addons, scan_id).await {
         Ok((result, data)) => {
             debug!("{}: {:?}", &filename, result);
             match result {
@@ -70,7 +70,7 @@ pub enum ScanError {
     NewEntryError(sqlx::Error),
 }
 
-async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(ScanResult, Option<AddonData>), ScanError> {
+async fn scan_file(path: PathBuf, addons: AddonStorageContainer, scan_id: u32) -> Result<(ScanResult, Option<AddonData>), ScanError> {
     let meta = path.metadata().map_err(|e| ScanError::FileError(e))?;
     let filename = path.file_name().unwrap().to_str().unwrap();
     let addon_entry = {
@@ -90,7 +90,7 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(Scan
         if <DateTime<Utc>>::from(last_modified) > entry.updated_at {
             let mut addons = addons.lock().await;
             debug!("file has changed, updating entry {:?}", path);
-            addons.update_entry(filename, meta, info).await
+            addons.update_entry(filename, meta, info, Some(scan_id)).await
                 .map_err(|e| ScanError::UpdateError(e))?;
             return Ok((ScanResult::Updated, None))
         }
@@ -103,7 +103,7 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(Scan
     if let Some(title) = &info.title && let Some(version) = &info.version {
         // If we found a previous entry, we are done.
         // Next time a scan is performed any changes will be reflected by the last modified check
-        if addons.update_entry_pk(filename, version, title).await
+        if addons.update_entry_pk(filename, version, title, Some(scan_id)).await
             .map_err(|e| ScanError::UpdateRenameError(e))?
         {
             return Ok((ScanResult::Renamed, None))
@@ -131,7 +131,7 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer) -> Result<(Scan
     };
 
     // Add to DB
-    addons.add_entry(&data).await
+    addons.add_entry(&data, Some(scan_id)).await
         .map_err(|e| ScanError::NewEntryError(e))?;
 
     Ok((ScanResult::Added, Some(data)))

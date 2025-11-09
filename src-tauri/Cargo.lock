@@ -2351,6 +2351,7 @@ dependencies = [
  "chrono",
  "l4d2_addon_parser",
  "log",
+ "rand 0.8.5",
  "regex",
  "serde",
  "serde_json",

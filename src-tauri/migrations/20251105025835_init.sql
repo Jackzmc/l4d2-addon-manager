@@ -15,6 +15,7 @@ create table addons
     flags integer not null default 0, -- Bit field
 
     workshop_id integer, -- extracted from addoninfo.txt or filename
+    scan_id integer, -- for detecting missing files
 
     primary key (title, version)
 );

@@ -19,6 +19,7 @@ use log::trace;
 use log::debug;
 use log::info;
 use log::error;
+use rand::random;
 use tauri::Emitter;
 
 const NUM_WORKER_THREADS: usize = 1;
@@ -61,11 +62,12 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
 
     info!("Spawning {} worker tasks", NUM_WORKER_THREADS);
     let mut set = JoinSet::new();
+    let scan_id: u32 = random();
     // Drain the queue and start a task for every item
     while let Some(item) = queue.pop_back() {
         let addons = addons.clone();
         let counter = counter.clone();
-        set.spawn_on(scan_file_wrapper(item, addons, counter), rt.handle());
+        set.spawn_on(scan_file_wrapper(item, addons, counter, scan_id), rt.handle());
     }
 
     // The following section is a bit hacky - I'm not sure how to properly run this
@@ -115,6 +117,10 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
                 add_workshop(&addons, items).await;
             }
         }
+
+        // Mark all filenames as null if we did not update / add them in this scan
+        let addons = addons.lock().await;
+        addons.scan_mark_missing(scan_id).await.unwrap();
 
         info!("All tasks done");
 
