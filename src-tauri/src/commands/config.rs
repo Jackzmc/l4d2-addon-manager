@@ -1,8 +1,8 @@
-use crate::cfg::AppConfigContainer;
-use log::debug;
+use crate::cfg::{AppConfig, AppConfigContainer};
+use log::{debug, info};
 use std::env::home_dir;
 use std::path::PathBuf;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::{DialogExt};
 
 #[tauri::command]
@@ -17,7 +17,9 @@ pub async fn choose_game_folder(app: tauri::AppHandle) -> Result<PathBuf, String
     if cfg!(windows) {
         dialog = dialog
             .set_directory("C:\\Program Files (x86)\\Steam\\steamapps\\common")
-            .add_filter("left4dead2.exe", &["exe"])
+            .add_filter("left4de#[derive(Debug)]
+#[derive(Debug)]
+ad2.exe", &["exe"])
             .set_file_name("left4dead2.exe");
     } else {
         let home_dir = home_dir().ok_or("could not acquire home dir".to_string())?;
@@ -45,6 +47,7 @@ pub async fn choose_game_folder(app: tauri::AppHandle) -> Result<PathBuf, String
 }
 
 #[tauri::command]
+// Used by first time setup, trust its value
 pub async fn set_game_folder(
     cfg: State<'_, AppConfigContainer>,
     path: String,
@@ -56,13 +59,18 @@ pub async fn set_game_folder(
     Ok(())
 }
 #[tauri::command]
-pub async fn set_apikey(
+pub async fn set_config(
+    app: AppHandle,
     cfg: State<'_, AppConfigContainer>,
-    key: Option<String>
+    config: AppConfig,
 ) -> Result<(), String> {
     let mut cfg = cfg.lock().await;
-    cfg.steam_apikey = key;
+    info!("set_config old {:?}", cfg);
+    info!("set_config new {:?}", config);
+    cfg.replace(config.clone())?;
     cfg.save();
+    app.emit("config_changed", config).ok();
     Ok(())
 }
+
 

@@ -1,4 +1,5 @@
 <template>
+<div>
     <AddonList workshop :addons="addons" @refresh="refresh">
         <template #select-buttons="{selected}">
             <button class="level-item button is-warning" @click="onMigratePressed(selected)">Move to managed addons</button>
@@ -9,6 +10,7 @@
     <p class="has-text-centered my-6" v-if="addons.length === 0">
         No addons found
     </p>
+</div>
 </template>
 
 <script setup lang="ts">

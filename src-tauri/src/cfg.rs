@@ -21,7 +21,7 @@ impl StaticData {
 
 pub type AppConfigContainer = Mutex<AppConfig>;
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct AppConfig {
     #[serde(skip)]
     _save_path: PathBuf,
@@ -64,5 +64,29 @@ impl AppConfig {
             return (steam, true)
         }
         (steam, false)
+    }
+
+    pub fn validate(&self, new_config: &Self) -> Result<(), String> {
+        if let Some(key) = &new_config.steam_apikey {
+            if key.len() != 32 {
+                return Err("Steam API Key must be 32 characters long".to_string());
+            }
+        }
+        if let Some(addons_folder) = &new_config.addons_folder {
+            let meta = fs::metadata(addons_folder.as_path())
+                .map_err(|e| "Addons folder must exist and be readable".to_string())?;
+            if !meta.is_dir() {
+                return Err("Addons folder must be a directory".to_string());
+            }
+        }
+
+        Ok(())
+    }
+    /// Tries to replace config with a new config, after the new settings are validated
+    pub fn replace(&mut self, new_config: Self) -> Result<(), String> {
+        self.validate(&new_config)?;
+        self.steam_apikey = new_config.steam_apikey;
+        self.addons_folder = new_config.addons_folder;
+        Ok(())
     }
 }

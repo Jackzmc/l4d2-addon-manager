@@ -1,7 +1,7 @@
 import { invoke, InvokeArgs, InvokeOptions } from '@tauri-apps/api/core'
 import { AddonEntry } from '../types/Addon.ts';
 import { notify } from '@kyvg/vue3-notification';
-import { InitAppData } from '../types/App.ts';
+import { AppConfig, InitAppData } from '../types/App.ts';
 
 async function tryInvoke<T>(cmd: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
     try {
@@ -27,6 +27,10 @@ export async function getGameFolder(): Promise<string | null> {
 
 export async function setGameFolder(path: string): Promise<void> {
     return await tryInvoke("set_game_folder", { path })
+}
+/** Replaces app config if successfully validates. Throws err otherwise */
+export async function setConfig(config: AppConfig): Promise<void> {
+    return await tryInvoke("set_config", { config })
 }
 
 export async function init(): Promise<InitAppData> {

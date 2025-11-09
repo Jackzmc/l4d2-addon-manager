@@ -1,4 +1,5 @@
 <template>
+<div>
     <AddonList :addons="addons" @refresh="refresh">
         <template #select-buttons="{selected}">
             <button class="level-item button is-warning" @click="onDisablePressed(selected)">Disable</button>
@@ -8,6 +9,7 @@
     <p class="has-text-centered my-6" v-if="addons.length === 0">
         No addons found
     </p>
+</div>
 </template>
 
 <script setup lang="ts">
