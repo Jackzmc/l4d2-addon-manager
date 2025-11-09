@@ -5,7 +5,7 @@
         </div>
         <main class="column mt-3 section-component">
             <router-view v-slot="{ Component }">
-                <component ref="view" :is="Component" />
+                <component ref="view" :is="Component" :config="config" />
             </router-view>
         </main>
     </div>
