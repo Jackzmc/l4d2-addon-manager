@@ -1,7 +1,7 @@
 import { invoke, InvokeArgs, InvokeOptions } from '@tauri-apps/api/core'
 import { AddonEntry } from '../types/Addon.ts';
 import { notify } from '@kyvg/vue3-notification';
-import { AppConfig, InitAppData } from '../types/App.ts';
+import { AddonCounts, AppConfig, InitAppData } from '../types/App.ts';
 
 async function tryInvoke<T>(cmd: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
     try {
@@ -14,6 +14,14 @@ async function tryInvoke<T>(cmd: string, args?: InvokeArgs, options?: InvokeOpti
             text: `An error occurred while running ${cmd}: ${err.message ?? err}`,
         });
         throw err
+    }
+}
+
+export async function countAddons(): Promise<AddonCounts> {
+    const data: number[] = await tryInvoke("addons_counts")
+    return {
+        addons: data[0],
+        workshop: data[1]
     }
 }
 

@@ -12,6 +12,12 @@ use crate::cfg::AppConfigContainer;
 use crate::scan::ScannerContainer;
 
 #[tauri::command]
+pub async fn addons_counts(addons: State<'_, AddonStorageContainer>) -> Result<(u32, u32), String> {
+    let addons = addons.lock().await;
+    addons.counts().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>) -> Result<Vec<AddonEntry>, String> {
     let addons = addons.lock().await;
     addons.list(AddonFlags(0)).await.map_err(|e| e.to_string())

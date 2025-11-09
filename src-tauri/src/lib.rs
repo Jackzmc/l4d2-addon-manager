@@ -62,6 +62,7 @@ pub fn run() {
             cmd_config::choose_game_folder,
             cmd_config::set_game_folder,
             cmd_config::set_config,
+            cmd_addons::addons_counts,
             cmd_addons::addons_list_managed,
             cmd_addons::addons_list_workshop,
             cmd_addons::addons_start_scan,

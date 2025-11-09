@@ -153,6 +153,15 @@ impl AddonStorage {
             .collect::<Vec<AddonEntry>>())
     }
 
+    /// Returns (# of addons, # of workshop items)
+    pub async fn counts(&self) -> Result<(u32, u32), sqlx::Error> {
+        let total = sqlx::query_as::<_, (u32, u32)>(
+            r#"select (select count(*) from addons), (select count(*) from workshop_items)"#
+        )
+            .fetch_one(&self.pool).await?;
+        Ok(total)
+    }
+
     pub async fn list_workshop(&self) -> Result<Vec<AddonEntry>, sqlx::Error> {
         Ok(sqlx::query_as::<_, WorkshopEntry>(r#"
                 select *

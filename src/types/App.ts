@@ -2,6 +2,11 @@ export interface SetRoute {
     name?: string
 }
 
+export interface AddonCounts {
+    addons: number,
+    workshop: number
+}
+
 export interface InitAppData {
     initial_route: SetRoute,
     data: StaticAppData,

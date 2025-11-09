@@ -1,7 +1,7 @@
 <template>
     <div class="columns is-gapless">
         <div class="column is-3" >
-            <Sidebar @scan="onScanRequest" :scan-active="isScanActive" :app-data="staticData" />
+            <Sidebar @scan="onScanRequest" :scan-active="isScanActive" :app-data="staticData" :counts="counts" />
         </div>
         <main class="column mt-3 section-component">
             <router-view v-slot="{ Component }">
@@ -15,9 +15,9 @@
 import Sidebar from '@/components/Sidebar.vue'
 import { notify } from '@kyvg/vue3-notification';
 import { AppConfig, onMounted, ref } from 'vue';
-import { ScanResultEvent, ScanResultMessage, ScanStateEvent, StaticAppData } from '../types/App.ts';
+import { AddonCounts, ScanResultEvent, ScanResultMessage, ScanStateEvent, StaticAppData } from '../types/App.ts';
 import { listen } from '@tauri-apps/api/event';
-import { abortScan, startScan } from '../js/tauri.ts';
+import { abortScan, countAddons, startScan } from '../js/tauri.ts';
 
 const props = defineProps<{
     staticData: StaticAppData,
@@ -26,11 +26,13 @@ const props = defineProps<{
 
 const view = ref()
 const isScanActive = ref(false)
+const counts = ref<AddonCounts>({ addons: 0, workshop: 0 })
 
 // tell child to refresh, if they can
-function triggerPageRefresh() {
+async function triggerPageRefresh() {
     if(view.value?.refresh) {
         view.value.refresh()
+        counts.value = await countAddons()
     }
 }
 
@@ -43,6 +45,7 @@ async function onScanRequest() {
 }
 
 onMounted(async() => {
+    counts.value = await countAddons()
     await listen<ScanStateEvent>("scan_state", (event) => {
         console.debug("scan_state", event)
         if(event.payload.state === "started") {

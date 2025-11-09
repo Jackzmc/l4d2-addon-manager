@@ -1,11 +1,13 @@
 <template>
 <nav class="panel is-primary sidebar">
     <p class="panel-heading">L4D2 Addon Manager</p>
-    <router-link class="panel-block" :to="{ name: 'addons-manual' }">
+    <router-link class="panel-block is-block" :to="{ name: 'addons-manual' }">
         Managed Addons
+        <span class="tag is-rounded is-pulled-right">{{ counts.addons }}</span>
     </router-link>
-    <router-link class="panel-block" :to="{ name: 'addons-workshop' }">
+    <router-link class="panel-block is-block" :to="{ name: 'addons-workshop' }">
         Workshop Addons
+        <span class="tag is-rounded is-pulled-right">{{ counts.workshop }}</span>
     </router-link>
     <div class="panel-block">
         <br>
@@ -55,11 +57,12 @@
 </style>
 
 <script setup lang="ts">
-import { StaticAppData } from '../types/App.ts';
+import { AddonCounts, StaticAppData } from '../types/App.ts';
 
 const props = defineProps<{
     scanActive: boolean,
-    appData: StaticAppData
+    appData: StaticAppData,
+    counts: AddonCounts
 }>()
 const emit = defineEmits(["scan"])
 </script>
