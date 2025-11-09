@@ -15,6 +15,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
+use std::time::Instant;
 use log::trace;
 use log::debug;
 use log::info;
@@ -22,12 +23,17 @@ use log::error;
 use rand::random;
 use tauri::Emitter;
 
-const NUM_WORKER_THREADS: usize = 1;
+const NUM_WORKER_THREADS: usize = 4;
 
 /// Main thread that starts and manages thread
 pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: AddonStorageContainer, app: AppHandle) {
     let counter = Arc::new(ScanCounter::default());
     app.emit("scan_state", ScanState::Started).ok();
+    let scan_id: u32 = random();
+    info!("=== SCAN STARTED ===");
+    info!("workers={} scan_id={}", NUM_WORKER_THREADS, scan_id);
+    info!("====================");
+    let now = Instant::now();
 
     // Load queue with vpks before starting worker threads
     let mut queue = VecDeque::new();
@@ -55,14 +61,12 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     let rt = tokio::runtime::Builder::new_multi_thread()
         .thread_name("scan-worker")
         .enable_time()
-        .max_blocking_threads(1)
+        .max_blocking_threads(NUM_WORKER_THREADS)
         .worker_threads(NUM_WORKER_THREADS)
         .build()
         .expect("could not build worker runtime");
 
-    info!("Spawning {} worker tasks", NUM_WORKER_THREADS);
     let mut set = JoinSet::new();
-    let scan_id: u32 = random();
     // Drain the queue and start a task for every item
     while let Some(item) = queue.pop_back() {
         let addons = addons.clone();
@@ -81,7 +85,7 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     let handle = rt.handle().clone();
     rt.spawn(async move {
         // Remove any workshop ids from workshop/ folder that we already got:
-        info!("Checking for existing workshop entries");
+        info!("Filtering out existing workshop entries");
         let existing_ws_ids = {
             let addons = addons.lock().await;
             addons.list_workshop_ids().await.unwrap_or_default()
@@ -110,7 +114,7 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
                 is_aborting = true;
             }
         }
-        debug!("all tasks complete");
+        debug!("all addon scan tasks complete");
         // All tasks complete, resolve any remaining workshop ids
         while ws_addons.len() > 0 {
             if let WorkerOutput::WorkshopItems(items) = start_workshop_resolve_task(&mut ws_addons, &handle, &ws).await.unwrap() {
@@ -122,13 +126,13 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
         let addons = addons.lock().await;
         addons.scan_mark_missing(scan_id).await.unwrap();
 
-        info!("All tasks done");
+        info!("all tasks done");
 
         tx.send(()).unwrap();
     });
 
     // Wait until wait task signals it's completion
-    debug!("scan main thread sleeping");
+    trace!("main thread sleeping");
     if let Err(e) = rx.recv() {
         debug!("{}", e);
     }
@@ -137,7 +141,11 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
         added: counter.added.load(Ordering::SeqCst),
         failed: counter.errors.load(Ordering::SeqCst)
     }).ok();
-    info!("ADDON SCAN COMPLETE. {} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
+
+    info!("===SCAN COMPLETE===");
+    info!("{} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
+    info!("Duration: {} seconds", now.elapsed().as_secs());
+    info!("===================");
     running_signal.store(true, Ordering::SeqCst); // signal that scan over
 }
 
@@ -162,7 +170,7 @@ async fn add_workshop(addons: &AddonStorageContainer, items: Vec<WorkshopItem>) 
 }
 
 fn get_workshop_ids(ws: Arc<SteamWorkshop>, slice: Vec<String>) -> WorkerOutput {
-    info!("Fetching {} workshop ids", slice.len());
+    info!("Fetching {} workshop ids ({:?})", slice.len(), slice);
     match ws.get_published_file_details(&slice) {
         Ok(items) => {
             WorkerOutput::WorkshopItems(items)

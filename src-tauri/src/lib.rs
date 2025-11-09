@@ -1,4 +1,5 @@
-use log::debug;
+use std::str::FromStr;
+use log::{debug, LevelFilter};
 use crate::cfg::AppConfig;
 use crate::commands::config as cmd_config;
 use crate::commands::addons as cmd_addons;
@@ -14,7 +15,12 @@ pub mod util;
 mod store;
 mod models;
 mod scan;
-
+fn log_level() -> LevelFilter {
+    let level = LevelFilter::from_str(option_env!("APP_LOG_LEVEL")
+        .unwrap_or("trace")).expect("invalid log level");
+    println!("log level: {}", level);
+    level
+}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
@@ -26,7 +32,7 @@ pub fn run() {
         .plugin(tauri_plugin_log::Builder::new()
             // Set default level to INFO, but our crate TRACE
             .level(log::LevelFilter::Info)
-            .level_for("l4d2_addon_manager_lib", log::LevelFilter::Trace)
+            .level_for("l4d2_addon_manager_lib", log_level())
             .build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())

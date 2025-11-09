@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
@@ -7,7 +8,7 @@ use chrono::DateTime;
 use l4d2_addon_parser::AddonInfo;
 use log::{info};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Pool, QueryBuilder, Sqlite};
+use sqlx::{Error, FromRow, Pool, QueryBuilder, Sqlite};
 use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
@@ -38,6 +39,15 @@ bitflags! {
 impl From<u32> for AddonFlags {
     fn from(flags: u32) -> Self {
         AddonFlags(flags)
+    }
+}
+
+#[derive(Debug, sqlx::Type, PartialEq)]
+#[sqlx(transparent)]
+pub struct FileHash(pub Vec<u8>);
+impl Display for FileHash {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&hex::encode(&self.0))
     }
 }
 
@@ -119,7 +129,7 @@ impl AddonStorage {
         Ok(sqlx::query_as::<_, FullAddonWithTagsList>(r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
                 from addons
-                left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
+                left join addon_tags tags on tags.hash = addons.file_hash
                 left join workshop_items wi on wi.publishedfileid = addons.workshop_id
                 group by addons.filename
             "#
@@ -163,7 +173,7 @@ impl AddonStorage {
                     version: "workshop".to_string(),
                     tagline: None,
                     chapter_ids: None,
-                    workshop_id: Some(entry.publishedfileid as i64)
+                    workshop_id: Some(entry.publishedfileid as i64),
                 },
                 tags: entry.tags.split(',').map(|s| s.to_string()).collect(),
                 workshop_info: Some(entry),
@@ -188,9 +198,10 @@ impl AddonStorage {
                     addons.updated_at, addons.created_at,
                     addons.file_size, addons.flags,
                     addons.workshop_id,
+                    addons.file_hash,
                     GROUP_CONCAT(tags.tag) tags
                 from addons
-                left join addon_tags tags on tags.title = addons.title AND tags.version = addons.version
+                left join addon_tags tags on tags.hash = addons.file_hash
                 where addons.filename = ?
                 group by addons.filename
             "#
@@ -200,12 +211,13 @@ impl AddonStorage {
                .await
     }
 
-    pub async fn update_entry(&mut self, filename: &str, file_meta: Metadata, addon: AddonInfo, scan_id: Option<u32>) -> Result<(), sqlx::Error> {
+    pub async fn update_entry(&mut self, filename: &str, hash: FileHash, file_meta: Metadata, addon: AddonInfo, scan_id: Option<u32>) -> Result<(), sqlx::Error> {
         let last_modified: DateTime<Utc> = file_meta.modified().unwrap().into();
         let size = file_meta.size() as i64;
         sqlx::query!(
-            "UPDATE addons SET file_size = ?, updated_at = ?, title = ?, version = ?, scan_id = ? WHERE filename = ?",
+            "UPDATE addons SET file_size = ?, file_hash = ?, updated_at = ?, title = ?, version = ?, scan_id = ? WHERE filename = ?",
             size,
+            hash,
             last_modified,
             addon.title,
             addon.version,
@@ -218,15 +230,16 @@ impl AddonStorage {
     }
 
 
-    /// Update the entry by its primary key. Returns boolean if an entry existed and had its filename changed, false if not
-    pub async fn update_entry_pk(&mut self, title: &str, version: &str, new_filename: &str, scan_id: Option<u32>) -> Result<bool, sqlx::Error> {
+    /// Update the entry by its hash. Returns boolean if an entry existed and had its filename & content changed, false if not
+    pub async fn update_entry_by_hash(&mut self, hash: &FileHash, title: &str, version: &str, new_filename: &str, scan_id: Option<u32>) -> Result<bool, sqlx::Error> {
         // TODO: where count(*) is 1? if possible? to prevent multiple entries with same title/version
         let affected = sqlx::query!(
-            "UPDATE addons SET filename = ?, scan_id = ? WHERE title = ? AND version = ?",
+            "UPDATE addons SET filename = ?, title = ?, version = ?, scan_id = ? WHERE file_hash = ?",
             new_filename,
-            scan_id,
             title,
-            version
+            version,
+            scan_id,
+            hash
         )
             .execute(&self.pool)
             .await?
@@ -234,11 +247,12 @@ impl AddonStorage {
         Ok(affected > 0)
     }
 
-    pub async fn add_entry(&self, addon: &AddonData, scan_id: Option<u32>) -> Result<(), sqlx::Error> {
+    /// Adds a new entry to database
+    pub async fn add_entry(&self, addon: &AddonData, scan_id: Option<u32>, hash: FileHash) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"INSERT INTO addons
-                (filename, updated_at, created_at, file_size, title, author, version, tagline, flags, workshop_id, scan_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (filename, updated_at, created_at, file_size, title, author, version, tagline, flags, workshop_id, scan_id, file_hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
             addon.filename,
             addon.updated_at,
@@ -250,7 +264,8 @@ impl AddonStorage {
             addon.tagline,
             addon.flags.0,
             addon.workshop_id,
-            scan_id
+            scan_id,
+            hash
         ).execute(&self.pool).await?;
         info!("Added entry {} (flags={}) (ws_id={:?}) (title={})", addon.filename, addon.flags.0, addon.workshop_id, addon.title);
         Ok(())

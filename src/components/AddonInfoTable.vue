@@ -39,6 +39,10 @@
             <td><b>Version</b></td>
             <td>{{ props.entry.addon.version }}</td>
         </tr>
+        <!-- <tr>
+            <td><b>SHA-256 Hash</b></td>
+            <td>{{ props.entry.hash }}</td>
+        </tr> -->
         <tr v-if="props.entry.addon.chapter_ids">
             <td><b>Chapter Ids</b></td>
             <td>

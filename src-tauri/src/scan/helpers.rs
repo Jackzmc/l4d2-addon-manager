@@ -66,3 +66,4 @@ pub(super) fn get_addon_flags(info: &AddonInfo) -> AddonFlags {
     }
     flags
 }
+

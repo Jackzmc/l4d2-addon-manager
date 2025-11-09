@@ -1,14 +1,16 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use crate::store::{AddonData};
+use crate::store::{AddonData, FileHash};
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, FromRow)]
 pub struct PartialAddon {
     pub filename: String,
     pub updated_at: chrono::DateTime<Utc>,
     pub created_at: chrono::DateTime<Utc>,
     pub file_size: i64,
+    /// SHA512 hash of file
+    pub file_hash: FileHash,
     pub flags: u32,
     pub workshop_id: Option<i64>,
 }
