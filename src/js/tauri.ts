@@ -61,3 +61,6 @@ export async function disableAddons(filenames: string[]): Promise<void> {
 export async function deleteAddons(filenames: string[]): Promise<void> {
     return await tryInvoke("addons_delete", { filenames })
 }
+export async function exportApp(withAddons: boolean): Promise<void> {
+    return await tryInvoke("export", { withAddons })
+}

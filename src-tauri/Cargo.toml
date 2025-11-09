@@ -33,3 +33,4 @@ tokio = { version = "1.48.0", features = [] }
 l4d2_addon_parser = { git = "https://git.jackz.me/jackz/l4d2-addon-parser.git", version = "1.1.0"}
 steam-workshop-api = "0.7.0"
 regex = "1.12.2"
+zip = "5.1.1"

@@ -16,6 +16,9 @@
     <router-link class="panel-block" :to="{ name: 'settings' }">
         Settings
     </router-link>
+    <router-link class="panel-block" :to="{ name: 'export'}">
+        Export
+    </router-link>
 
     <footer v-if="appData">
         v{{ appData.app_version }}
@@ -52,7 +55,6 @@
 </style>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import { StaticAppData } from '../types/App.ts';
 
 const props = defineProps<{

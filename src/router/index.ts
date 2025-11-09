@@ -14,6 +14,7 @@ const routes = [
       { name: "addons-manual", path: 'addons/manual', component: () => import('@/pages/ManagedAddons.vue') },
       { name: "addons-workshop", path: 'addons/workshop',  component: () => import('@/pages/WorkshopAddons.vue')  },
       { name: "settings", path: 'settings',  component: () => import('@/pages/Settings.vue')  },
+      { name: "export", path: 'export',  component: () => import('@/pages/Export.vue')  },
     ]
   }
 ]

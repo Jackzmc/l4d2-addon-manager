@@ -17,9 +17,7 @@ pub async fn choose_game_folder(app: tauri::AppHandle) -> Result<PathBuf, String
     if cfg!(windows) {
         dialog = dialog
             .set_directory("C:\\Program Files (x86)\\Steam\\steamapps\\common")
-            .add_filter("left4de#[derive(Debug)]
-#[derive(Debug)]
-ad2.exe", &["exe"])
+            .add_filter("left4dead2.exe", &["exe"])
             .set_file_name("left4dead2.exe");
     } else {
         let home_dir = home_dir().ok_or("could not acquire home dir".to_string())?;
