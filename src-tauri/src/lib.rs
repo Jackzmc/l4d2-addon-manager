@@ -4,7 +4,7 @@ use crate::commands::config as cmd_config;
 use crate::commands::addons as cmd_addons;
 use std::sync::{Arc};
 use tauri::async_runtime::Mutex;
-use tauri::{Manager, RunEvent, State, WindowEvent};
+use tauri::{Manager, RunEvent};
 use crate::store::{AddonStorage, AddonStorageContainer};
 use crate::scan::AddonScanner;
 

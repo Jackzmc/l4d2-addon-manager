@@ -19,17 +19,19 @@ pub struct AddonFlags(pub u32);
 bitflags! {
     impl AddonFlags: u32 {
         /// Is addon in the 'workshop' folder
-        const WORKSHOP = 0b0000001;
+        const WORKSHOP = 1;
         /// Is addon a campaign
-        const CAMPAIGN = 0b0000010;
+        const CAMPAIGN = 1 << 1;
         /// Changes a survivor
-        const SURVIVOR = 0b0000100;
+        const SURVIVOR = 1 << 2;
         /// Changes / adds a script
-        const SCRIPT = 0b0001000;
+        const SCRIPT = 1 << 3;
         /// Includes a texture change
-        const SKIN = 0b0010000;
+        const SKIN = 1 << 4;
         /// Weapon change
-        const WEAPON = 0b0100000;
+        const WEAPON = 1 << 5;
+        /// Audio, music, sound
+        const SOUND = 1 << 6;
     }
 }
 // Needed for sqlx to load
@@ -38,6 +40,7 @@ impl From<u32> for AddonFlags {
         AddonFlags(flags)
     }
 }
+
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct AddonData {
     /// Name of the file addon was found in

@@ -7,7 +7,6 @@ use crate::store::AddonStorageContainer;
 use std::sync::atomic::AtomicBool;
 use crate::scan::worker::ScanError;
 use std::fmt::Display;
-use crate::scan::worker::ScanResult;
 use serde::Serialize;
 use log::info;
 use log::debug;
@@ -39,12 +38,6 @@ pub enum ScanState {
         added: u32,
         failed: u32
     }
-}
-
-#[derive(Serialize, Clone)]
-pub struct ScanResultPayload {
-    result: ScanResult,
-    filename: String
 }
 
 impl Display for ScanError {

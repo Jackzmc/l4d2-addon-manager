@@ -20,12 +20,13 @@ impl StaticData {
 
 pub type AppConfigContainer = Mutex<AppConfig>;
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct AppConfig {
     #[serde(skip)]
     _save_path: PathBuf,
 
     pub addons_folder: Option<PathBuf>,
+    pub steam_apikey: Option<String>
 }
 
 impl AppConfig {

@@ -61,5 +61,8 @@ pub(super) fn get_addon_flags(info: &AddonInfo) -> AddonFlags {
     if info.content.is_weapon {
         flags |= AddonFlags::WEAPON;
     }
+    if info.content.is_sound || info.content.is_music {
+        flags |= AddonFlags::SOUND;
+    }
     flags
 }

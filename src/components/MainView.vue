@@ -14,13 +14,14 @@
 <script setup lang="ts">
 import Sidebar from '@/components/Sidebar.vue'
 import { notify } from '@kyvg/vue3-notification';
-import { onMounted, ref } from 'vue';
+import { AppConfig, onMounted, ref } from 'vue';
 import { ScanResultEvent, ScanResultMessage, ScanStateEvent, StaticAppData } from '../types/App.ts';
 import { listen } from '@tauri-apps/api/event';
 import { abortScan, startScan } from '../js/tauri.ts';
 
 const props = defineProps<{
-    staticData: StaticAppData
+    staticData: StaticAppData,
+    config: AppConfig
 }>()
 
 const view = ref()

@@ -1,16 +1,18 @@
 <template>
   <notifications position="bottom right" :speed="5000" />
-  <router-view @init="onInit" :static-data="data" />
+  <router-view @init="onInit" :static-data="staticData" :config="configData" />
 
 </template>
 
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue';
-import { InitAppData, StaticAppData } from './types/App.ts';
+import { InitAppData, StaticAppData, AppConfig } from './types/App.ts';
 
-const data = ref<StaticAppData>()
+const staticData = ref<StaticAppData>()
+const configData = ref<AppConfig>()
 function onInit(init: InitAppData) {
-  data.value = init.data
+  staticData.value = init.data
+  configData.value = init.config
 }
 </script>
 

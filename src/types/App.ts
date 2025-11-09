@@ -4,11 +4,17 @@ export interface SetRoute {
 
 export interface InitAppData {
     initial_route: SetRoute,
-    data: StaticAppData
+    data: StaticAppData,
+    config: AppConfig
 }
 export interface StaticAppData {
     app_version: string,
     git_commit: string | null
+}
+
+export interface AppConfig {
+    addons_folder: string | null,
+    steam_apikey: string | null
 }
 
 export type ScanStateEvent = ScanStateEvent_Started | ScanStateEvent_Aborted | ScanStateEvent_Complete
