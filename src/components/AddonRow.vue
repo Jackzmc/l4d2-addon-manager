@@ -6,7 +6,7 @@
     <td>
         <a @click="showDetails">{{ entry.addon.title }}</a>
         <div class="tags" v-if="tags.length > 0">
-            <span class="tag has-background-primary-light" v-for="tag in tags" :key="tag">{{ tag }}</span>
+            <a class="tag has-background-primary-light" v-for="tag in tags" :key="tag" @click="selectTag(tag)">{{ tag }}</a>
         </div>
     </td>
     <td>{{ formatSize(entry.addon.file_size) }}</td>
@@ -23,7 +23,7 @@ import { formatSize } from '../js/utils.ts';
 import { AddonEntry } from '../types/Addon.ts';
 import { getAddonContents } from '../js/app.ts';
 
-const emit = defineEmits(["select", "showDetails"])
+const emit = defineEmits(["select", "showDetails", "selectTag"])
 
 const tags = computed(() => {
     return props.workshop ? props.entry.tags : getAddonContents(props.entry.addon.flags)
@@ -37,5 +37,8 @@ const props = defineProps<{
 
 function showDetails() {
     emit("showDetails")
+}
+function selectTag(tag: string) {
+    emit("selectTag", tag)
 }
 </script>

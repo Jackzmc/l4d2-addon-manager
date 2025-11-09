@@ -10,6 +10,7 @@
                         </template>
                     </div>
                     <div class="level-right">
+                        <input type="text" class="input" placeholder="Search for an item" v-model="query" />
                     </div>
                 </div>
             </td>
@@ -23,12 +24,13 @@
         </tr>
     </thead>
     <tbody>
-        <AddonRow v-for="entry in props.addons" :key="entry.addon.filename" 
+        <AddonRow v-for="entry in filteredAddons" :key="entry.addon.filename" 
             :entry="entry" 
             :selected="isSelected(entry)"
             :workshop="workshop"
             @show-details="setDetailAddon(entry)"
             @select="setSelected(entry, !isSelected(entry))"
+            @select-tag="onTagSelected"
         />
     </tbody>
 </table>
@@ -52,6 +54,7 @@ import { AddonEntry } from '../types/Addon.ts';
 import AddonRow from './AddonRow.vue';
 import ModalCard from './ModalCard.vue';
 import AddonInfoTable from './AddonInfoTable.vue';
+import { getAddonContents } from '../js/app.ts';
 
 const emit = defineEmits(["refresh"])
 
@@ -62,6 +65,8 @@ const props = defineProps<{
 
 const selected = ref<Record<string, boolean>>({})
 const selectedEntry = ref<AddonEntry|null>(null)
+
+const query = ref<string>("")
 
 const selectedCount = computed(() => {
     return selectedAddons.value.length
@@ -88,4 +93,35 @@ function toggleSelectAll(event: InputEvent) {
     }
     selected.value = val
 }
+
+function onTagSelected(tag: string) {
+    if(query.value.length > 0) {
+        query.value += " "
+    }
+    query.value += `#${tag}`
+}
+
+const filteredAddons = computed(() => {
+    if(query.value === "") return props.addons
+    const q = query.value.toLocaleLowerCase()
+    return props.addons.filter(entry => {
+        return entry.addon.title.toLocaleLowerCase().includes(q)
+            || entry.addon.filename.toLocaleLowerCase().includes(q)
+            || entry.addon.tagline?.toLocaleLowerCase().includes(q)
+            // expensive but oh well seems fine
+            || entry.tags.some(tag => queryTags.value.includes(tag.toLocaleLowerCase()))
+            || getAddonContents(entry.addon.flags).some(tag => queryTags.value.includes(tag.toLocaleLowerCase()))
+    })
+})
+const queryTags = computed(() => {
+    if(query.value === "") return []
+    const tags = []
+    const split = query.value.split(" ")
+    for(const piece of split) {
+        if(piece.startsWith("#")) {
+            tags.push(piece.substring(1).toLocaleLowerCase())
+        }
+    }
+    return tags
+})
 </script>
