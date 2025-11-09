@@ -3,8 +3,7 @@
     <AddonList workshop :addons="addons" @refresh="refresh">
         <template #select-buttons="{selected}">
             <button class="level-item button is-warning" @click="onMigratePressed(selected)">Move to managed addons</button>
-            <!-- TODO: support-->
-            <!-- <button class="level-item button is-link" @click="onUnsubscribe">Unsubscribe</button> -->
+            <button v-if="config.steam_apikey" class="level-item button is-link" @click="onUnsubscribePressed(selected)">Unsubscribe</button>
         </template>
     </AddonList>
     <p class="has-text-centered my-6" v-if="addons.length === 0">
@@ -18,6 +17,11 @@ import { onMounted, ref } from 'vue';
 import { AddonEntry } from '../types/Addon.ts';
 import { listAddons, migrateWorkshopAddons, unsubscribeAddons } from '../js/tauri.ts';
 import AddonList from '../components/AddonList.vue';
+import { AppConfig } from '../types/App.ts';
+
+const props = defineProps<{
+    config: AppConfig
+}>()
 
 const addons = ref<AddonEntry[]>([])
 
