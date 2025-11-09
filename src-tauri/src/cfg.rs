@@ -2,6 +2,7 @@ use std::fs;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use steam_workshop_api::SteamWorkshop;
 use tauri::async_runtime::Mutex;
 
 #[derive(Serialize, Clone)]
@@ -52,5 +53,16 @@ impl AppConfig {
         debug!("Saving config to {:?}", self._save_path);
         fs::create_dir_all(self._save_path.parent().unwrap()).ok();
         serde_json::to_writer(std::fs::File::create(&self._save_path).unwrap(), &self).unwrap();
+    }
+
+    /// Get an instance of SteamWorkshop client, with user's apikey if they set it
+    /// returns true if apikey set
+    pub fn steam(&self) -> (SteamWorkshop, bool) {
+        let mut steam = SteamWorkshop::new();
+        if let Some(apikey) = &self.steam_apikey {
+            steam.set_apikey(Some(apikey.to_owned()));
+            return (steam, true)
+        }
+        (steam, false)
     }
 }
