@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::fs;
 use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
@@ -93,6 +94,7 @@ pub struct AddonEntry {
 
 pub struct AddonStorage {
     pool: Pool<Sqlite>,
+    db_path: PathBuf
 }
 
 pub type AddonStorageContainer = Arc<Mutex<AddonStorage>>;
@@ -109,7 +111,8 @@ impl AddonStorage {
             .map_err(|e| e.to_string())?;
         info!("Pool ready setup for {}", db_path.display());
         Ok(Self {
-            pool
+            pool,
+            db_path
         })
     }
 
@@ -220,7 +223,7 @@ impl AddonStorage {
                .await
     }
 
-    pub async fn update_entry(&mut self, filename: &str, hash: FileHash, file_meta: Metadata, addon: AddonInfo, scan_id: Option<u32>) -> Result<(), sqlx::Error> {
+    pub async fn update_entry(&mut self, filename: &str, hash: FileHash, file_meta: Metadata, addon: &AddonInfo, scan_id: Option<u32>) -> Result<(), sqlx::Error> {
         let last_modified: DateTime<Utc> = file_meta.modified().unwrap().into();
         let size = file_meta.size() as i64;
         sqlx::query!(
@@ -310,6 +313,12 @@ impl AddonStorage {
         sqlx::query!("UPDATE addons SET filename = NULL WHERE scan_id != ?", id)
             .execute(&self.pool).await?;
         Ok(())
+    }
+
+    /// Wipes all data from database
+    pub async fn danger_delete(&self) -> Result<(), std::io::Error> {
+        self.pool.close().await;
+        fs::remove_file(&self.db_path)
     }
 
 }

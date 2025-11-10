@@ -72,3 +72,7 @@ export async function deleteAddons(filenames: string[]): Promise<void> {
 export async function exportApp(withAddons: boolean): Promise<void> {
     return await tryInvoke("export", { withAddons })
 }
+
+export async function resetDatabase(): Promise<void> {
+    return await tryInvoke("reset_db")
+}

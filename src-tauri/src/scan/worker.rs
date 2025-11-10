@@ -94,7 +94,7 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer, scan_id: u32) -
         if <DateTime<Utc>>::from(last_modified) > entry.updated_at || hash != entry.file_hash {
             let mut addons = addons.lock().await;
             debug!("found changed file: {}, updating", filename);
-            addons.update_entry(filename, hash, meta, info, Some(scan_id)).await
+            addons.update_entry(filename, hash, meta, &info, Some(scan_id)).await
                 .map_err(|e| ScanError::UpdateError(e))?;
             return Ok((ScanResult::Updated, None))
         }

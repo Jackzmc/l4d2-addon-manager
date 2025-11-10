@@ -1,21 +1,29 @@
 <template>
-<div class="container px-6">
-    <br>
-    <form @submit.prevent="save">
-        <Field label="Addons Folder Path" :error="validationErrors['addonsPath']">
-            <input type="text" :class="['input',{'is-danger': validationErrors['addonsPath']}]" v-model="addonsPath" :error="validationErrors['addonsPath']"/>
-            <p class="help">Path to your addons (example: steam/steamapps/common/Left 4 Dead2/left4dead2/addons)</p>
-        </Field>
+<div>
+    <div class="container px-6">
+        <br>
+        <h4 class="title is-4">Settings</h4>
+        <form @submit.prevent="save" class="box">
+            <Field label="Addons Folder Path" :error="validationErrors['addonsPath']">
+                <input type="text" :class="['input',{'is-danger': validationErrors['addonsPath']}]" v-model="addonsPath" :error="validationErrors['addonsPath']"/>
+                <p class="help">Path to your addons (example: steam/steamapps/common/Left 4 Dead2/left4dead2/addons)</p>
+            </Field>
 
-        <Field label="Steam API Key (optional)" :error="validationErrors['apiKey']">
-            <input type="text" :class="['input',{'is-danger': validationErrors['apiKey']}]" v-model="apiKey" />
-            <p class="help">Allows you to automatically unsubscribe from workshop items. <a target="_blank" href="https://steamcommunity.com/dev/apikey">Get your key here</a></p>
-        </Field>
+            <Field label="Steam API Key (optional)" :error="validationErrors['apiKey']">
+                <input type="text" :class="['input',{'is-danger': validationErrors['apiKey']}]" v-model="apiKey" />
+                <p class="help">Allows you to automatically unsubscribe from workshop items. <a target="_blank" href="https://steamcommunity.com/dev/apikey">Get your key here</a></p>
+            </Field>
 
-        <Field>
-            <button type="submit" class="button is-link" :disabled="canSave ? undefined : true">Save Changes</button>
-        </Field>
-    </form>
+            <Field>
+                <button type="submit" class="button is-link" :disabled="canSave ? undefined : true">Save Changes</button>
+            </Field>
+        </form>
+        <br><br>
+        <h4 class="title is-4">Danger Zone</h4>
+        <div class="buttons box">
+            <button class="button is-danger has-text-weight-bold" @click="promptReset">Reset Database</button>
+        </div>
+    </div>
 </div>
 </template>
 
@@ -23,7 +31,7 @@
 import { computed, onActivated, onBeforeMount, onMounted, ref } from 'vue';
 import Field from '../components/Field.vue';
 import { AppConfig } from '../types/App';
-import { setConfig } from '../js/tauri.ts';
+import { resetDatabase, setConfig } from '../js/tauri.ts';
 import { notify } from '@kyvg/vue3-notification';
 
 const emit = defineEmits(["config-changed"])
@@ -63,8 +71,17 @@ async function save() {
     await setConfig(newConfig)
     notify({
         type: "success",
-        title: "Settings saved successfully"
+        title: "Settings saved successfully",
     })
+}
+import { confirm } from '@tauri-apps/plugin-dialog';
+async function promptReset() {
+    if(await confirm(
+        "This will require a full rescan of all your addons and may take a few minutes.", 
+        { kind: "warning", title: "Are you sure?", okLabel: "Yes", cancelLabel: "No"}
+    )) {
+        await resetDatabase()
+    }
 }
 
 onBeforeMount(() => {

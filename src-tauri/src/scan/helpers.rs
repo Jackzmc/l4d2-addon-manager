@@ -21,6 +21,7 @@ pub(super) fn get_vpks_in_dir(path: &PathBuf) -> Result<Vec<PathBuf>, String> {
         let path = file.path();
         if let Some(ext) = path.extension() {
             if ext == "vpk" {
+                println!("found vpk: {}", path.display());
                 list.push(path);
             }
         }
