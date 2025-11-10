@@ -1,11 +1,8 @@
 use l4d2_addon_parser::addon_list::AddonList;
-use std::path::PathBuf;
 use std::time::Duration;
 use log::{debug, error, info};
 use serde::Serialize;
 use sqlx::__rt::spawn_blocking;
-use steam_workshop_api::SteamWorkshop;
-use tauri::async_runtime::block_on;
 use tauri::State;
 use crate::store::{AddonEntry, AddonFlags, AddonStorageContainer};
 use crate::cfg::AppConfigContainer;
@@ -20,7 +17,7 @@ pub async fn addons_counts(addons: State<'_, AddonStorageContainer>) -> Result<(
 #[tauri::command]
 pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>) -> Result<Vec<AddonEntry>, String> {
     let addons = addons.lock().await;
-    addons.list(AddonFlags(0)).await.map_err(|e| e.to_string())
+    addons.list().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

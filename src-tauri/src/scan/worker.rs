@@ -13,7 +13,6 @@ use crate::store::AddonStorageContainer;
 use std::path::PathBuf;
 use steam_workshop_api::WorkshopItem;
 use log::{error, trace};
-use serde::Serialize;
 use log::debug;
 use std::os::unix::fs::MetadataExt;
 use sqlx::__rt::spawn_blocking;

@@ -9,7 +9,7 @@ use chrono::DateTime;
 use l4d2_addon_parser::AddonInfo;
 use log::{info};
 use serde::{Deserialize, Serialize};
-use sqlx::{Error, FromRow, Pool, QueryBuilder, Sqlite};
+use sqlx::{FromRow, Pool, QueryBuilder, Sqlite};
 use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
@@ -127,7 +127,7 @@ impl AddonStorage {
         Ok(())
     }
 
-    pub async fn list(&self, flags: AddonFlags) -> Result<Vec<AddonEntry>, sqlx::Error> {
+    pub async fn list(&self) -> Result<Vec<AddonEntry>, sqlx::Error> {
         // TODO: include workshop_items.*
         Ok(sqlx::query_as::<_, FullAddonWithTagsList>(r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
@@ -137,7 +137,6 @@ impl AddonStorage {
                 group by addons.filename
             "#
         )
-            .bind(flags.0)
             .fetch_all(&self.pool).await?
             .into_iter().map(|entry| {
                 // Skip empty strings as they have no tags
