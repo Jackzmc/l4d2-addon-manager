@@ -147,7 +147,7 @@ pub async fn addons_delete(cfg: State<'_, AppConfigContainer>, filenames: Vec<St
     Ok(filenames.into_iter()
         .map(|filename| {
             let path = addons_folder.join(&filename);
-            match std::fs::remove_file(path) {
+            match trash::delete(&path){
                 Ok(_) => ItemResult::Ok(filename),
                 Err(e) => ItemResult::Error(filename, e.to_string())
             }
