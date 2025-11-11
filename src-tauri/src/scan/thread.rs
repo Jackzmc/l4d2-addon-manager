@@ -25,6 +25,21 @@ use tauri::Emitter;
 
 const NUM_WORKER_THREADS: usize = 4;
 
+fn get_workshop_folder_ws_ids(path: &PathBuf) -> Vec<i64> {
+    match get_vpks_in_dir(&path.join("workshop")) {
+        Ok(list) => list.into_iter()
+            .map(|item| item.file_stem().unwrap().to_string_lossy().parse::<i64>())
+            // Remove any files that don't have a valid ID:
+            .filter(|item| item.is_ok())
+            .map(|item| item.unwrap())
+            .collect(),
+        Err(e) => {
+            error!("failed to scan workshop dir: {}", e);
+            Vec::new()
+        }
+    }
+}
+
 /// Main thread that starts and manages thread
 pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, addons: AddonStorageContainer, app: AppHandle) {
     let counter = Arc::new(ScanCounter::default());
@@ -36,25 +51,7 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     let now = Instant::now();
 
     // Load queue with vpks before starting worker threads
-    let mut queue = VecDeque::new();
-    let files = get_vpks_in_dir(&path).expect("failed to scan dir");
-    for vpk in files  {
-        queue.push_front(vpk);
-    }
-
-    // Extract all workshop ids from workshop addons folder
-    let ws_addons: Vec<i64> = match get_vpks_in_dir(&path.join("workshop")) {
-        Ok(list) => list.into_iter()
-            .map(|item| item.file_stem().unwrap().to_string_lossy().parse::<i64>())
-            // Remove any files that don't have a valid ID:
-            .filter(|item| item.is_ok())
-            .map(|item| item.unwrap())
-            .collect(),
-        Err(e) => {
-            error!("failed to scan workshop dir: {}", e);
-            Vec::new()
-        }
-    };
+    let mut files = get_vpks_in_dir(&path).expect("failed to scan dir");
 
     // Allow aborting early right before we enter the main process loop
     if !running_signal.load(Ordering::SeqCst) {
@@ -72,7 +69,7 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
 
     let mut set = JoinSet::new();
     // Drain the queue and start a task for every item
-    while let Some(item) = queue.pop_back() {
+    while let Some(item) = files.pop() {
         let addons = addons.clone();
         let counter = counter.clone();
         set.spawn_on(scan_file_wrapper(item, addons, counter, scan_id), rt.handle());
@@ -83,10 +80,10 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     // so there is a task running on a task thread and this main thread is just sleeping
     let (tx, rx) = channel::<()>();
     let ws = Arc::new(SteamWorkshop::new());
-
-    // Spawn a task to await all the other worker tasks
     let task_running_signal = running_signal.clone();
     let handle = rt.handle().clone();
+
+    // Spawn a task to await all the other worker tasks
     rt.spawn(async move {
         // Remove any workshop ids from workshop/ folder that we already got:
         info!("Filtering out existing workshop entries");
@@ -94,20 +91,30 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
             let addons = addons.lock().await;
             addons.list_workshop_ids().await.unwrap_or_default()
         };
-        let mut ws_addons: Vec<i64> = ws_addons.into_iter().filter(|id| !existing_ws_ids.contains(id)).collect();
+
+        // Resolve workshop folder
+        {
+            // Extract all workshop ids from workshop addons folder
+            let mut workshop_folder_ws_ids: Vec<i64> = get_workshop_folder_ws_ids(&path).into_iter().filter(|id| !existing_ws_ids.contains(id)).collect();
+            // If there is any workshop ids in the workshop folder, fetch them
+            if workshop_folder_ws_ids.len() > 0 {
+                drain_workshop_addons(&mut workshop_folder_ws_ids, &handle, &ws, addons.clone(), "workshop".to_string(), scan_id).await;
+            }
+        }
+        // Addons from the normal addons folder, their workshop ids get added to this queue
+        let mut addons_folder_ws_ids: Vec<i64> = Vec::new();
 
         let mut is_aborting = false;
         debug!("scan main: waiting for tasks to finish");
         while let Some(Ok(result)) = set.join_next().await {
             match result {
                 WorkerOutput::WorkshopId(workshop_id) => {
-                    ws_addons.push(workshop_id);
+                    addons_folder_ws_ids.push(workshop_id);
                     // If we got >= 100 workshop ids, while we are still processing, go ahead and fetch them
-                    if ws_addons.len() >= 100 {
-                        start_workshop_resolve_task(&mut ws_addons, &handle, &ws);
+                    if addons_folder_ws_ids.len() >= 100 {
+                        drain_workshop_addons(&mut addons_folder_ws_ids, &handle, &ws, addons.clone(), "addons".to_string(), scan_id).await;
                     }
                 },
-                WorkerOutput::WorkshopItems(items ) => add_workshop(&addons, items).await,
                 _ => {}
             }
 
@@ -120,13 +127,9 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
         }
         debug!("all addon scan tasks complete");
         // All tasks complete, resolve any remaining workshop ids
-        while ws_addons.len() > 0 {
-            if let WorkerOutput::WorkshopItems(items) = start_workshop_resolve_task(&mut ws_addons, &handle, &ws).await.unwrap() {
-                add_workshop(&addons, items).await;
-            }
-        }
+        drain_workshop_addons(&mut addons_folder_ws_ids, &handle, &ws, addons.clone(), "addons".to_string(), scan_id).await;
 
-        // Mark all filenames as null if we did not update / add them in this scan
+        // Mark all filenames and workshop srcs as null if we did not update / add them in this scan
         let addons = addons.lock().await;
         addons.scan_mark_missing(scan_id).await.unwrap();
 
@@ -153,35 +156,33 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     running_signal.store(true, Ordering::SeqCst); // signal that scan over
 }
 
-/// Takes upto 100 ids and spawns new fetch task
-/// Runs on tokio main worker threads to avoid scan aborts dropping it
-fn start_workshop_resolve_task(ws_addons: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>) -> tokio::task::JoinHandle<WorkerOutput> {
+/// Drains list of workshop ids and fetches them in batches of 100.
+/// Runs on runtime blocking threads as it's sync HTTP
+async fn drain_workshop_addons(addon_ids: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>, addons: AddonStorageContainer, src: String, scan_id: u32) {
+    while !addon_ids.is_empty() {
+        fetch_workshop_addons(addon_ids, rt, ws, addons.clone(), src.clone(), scan_id.clone()).await;
+    }
+}
+
+/// takes upto 100 ids from list and fetches items and pushes to db
+async fn fetch_workshop_addons(addon_ids: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>, addons: AddonStorageContainer, src: String, scan_id: u32) {
     // Steam API only supports upto 100 at a time
-    let items_to_drain = 100.min(ws_addons.len()); // drain panics if over len, get smallest
-    let slice: Vec<String> = ws_addons.drain(0..items_to_drain).map(|item| item.to_string()).collect();
+    let items_to_drain = 100.min(addon_ids.len()); // drain panics if over len, get smallest
+    trace!("fetching slice of {items_to_drain} ids, src={src}");
+    let slice: Vec<String> = addon_ids.drain(0..items_to_drain).map(|item| item.to_string()).collect();
     let ws = ws.clone();
-    trace!("spawning workshop task");
-    rt.spawn_blocking(|| get_workshop_ids(ws, slice))
-}
-
-async fn add_workshop(addons: &AddonStorageContainer, items: Vec<WorkshopItem>) {
-    if items.len() == 0 { return; }
-    debug!("got {} items to store", items.len());
-    let addons = addons.lock().await;
-    addons.add_workshop_items(items).await
-        .expect("failed to add workshop items");
-    debug!("stored");
-}
-
-fn get_workshop_ids(ws: Arc<SteamWorkshop>, slice: Vec<String>) -> WorkerOutput {
-    info!("Fetching {} workshop ids ({:?})", slice.len(), slice);
-    match ws.get_published_file_details(&slice) {
+    let slice_len = slice.len();
+    match rt.spawn_blocking(move || ws.get_published_file_details(&slice)).await.expect("failed to spawn blocking task") {
         Ok(items) => {
-            WorkerOutput::WorkshopItems(items)
+            if items.len() == 0 { return; } // skip if we have nothing
+            let addons = addons.lock().await;
+            debug!("fetched {} ids, got {} workshop items for src={}", slice_len, items.len(), src);
+            if let Err(err) = addons.add_workshop_items(items, src, Some(scan_id)).await {
+                error!("failed to add workshop items: {}", err);
+            }
         },
         Err(err) => {
             error!("failed to get workshop ids: {}", err);
-            WorkerOutput::None
         }
     }
 }

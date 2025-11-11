@@ -20,8 +20,6 @@ use sqlx::__rt::spawn_blocking;
 pub(super) enum WorkerOutput {
     /// Worker has new workshop id to enqueue
     WorkshopId(i64),
-    /// Worker has fetched workshop items
-    WorkshopItems(Vec<WorkshopItem>),
     /// Worker has nothing useful
     None
 }

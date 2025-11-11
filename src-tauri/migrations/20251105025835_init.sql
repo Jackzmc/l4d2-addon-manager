@@ -41,6 +41,10 @@ create table workshop_items
     file_url        text    not null,
     creator_id      text    not null,
     tags            text    not null, -- comma separate list
+
+    src             text    not null, -- "workshop" folder or "addons" folder
+    scan_id         integer null, -- for detecting missing files
+
     primary key(publishedfileid)
 );
 

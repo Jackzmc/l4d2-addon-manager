@@ -130,7 +130,7 @@ impl AddonStorage {
     /// Returns (# of addons, # of workshop items)
     pub async fn counts(&self) -> Result<(u32, u32), sqlx::Error> {
         let total = sqlx::query_as::<_, (u32, u32)>(
-            r#"select (select count(*) from addons), (select count(*) from workshop_items)"#
+            r#"select (select count(*) from addons), (select count(*) from workshop_items where src = 'workshop')"#
         )
             .fetch_one(&self.pool).await?;
         Ok(total)
@@ -168,6 +168,7 @@ impl AddonStorage {
         Ok(sqlx::query_as::<_, WorkshopEntry>(r#"
                 select *
                 from workshop_items
+                where src = 'workshop'
                 order by time_updated desc
             "#
         )
@@ -283,9 +284,9 @@ impl AddonStorage {
     }
 
     /// Attempts to add workshop items to db, overwriting existing if found
-    pub async fn add_workshop_items(&self, items: Vec<WorkshopItem>) -> Result<(), sqlx::Error> {
+    pub async fn add_workshop_items(&self, items: Vec<WorkshopItem>, src: String, scan_id: Option<u32>) -> Result<(), sqlx::Error> {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT OR REPLACE INTO workshop_items (publishedfileid, title, time_created, time_updated, file_size, description, file_url, creator_id, tags) "
+            "INSERT OR REPLACE INTO workshop_items (publishedfileid, title, time_created, time_updated, file_size, description, file_url, creator_id, tags, src, scan_id) "
         );
         let num_items = items.len();
         query_builder.push_values(items, |mut b, item| {
@@ -297,7 +298,9 @@ impl AddonStorage {
                 .push_bind(item.description)
                 .push_bind(item.file_url)
                 .push_bind(item.creator)
-                .push_bind(item.tags.iter().map(|tag| tag.tag.clone()).collect::<Vec<String>>().join(","));
+                .push_bind(item.tags.iter().map(|tag| tag.tag.clone()).collect::<Vec<String>>().join(","))
+                .push_bind(src.clone())
+                .push_bind(scan_id.as_ref().unwrap());
         });
 
         let query = query_builder.build();
@@ -310,6 +313,8 @@ impl AddonStorage {
     /// To be called at end of scan
     pub async fn scan_mark_missing(&self, id: u32) -> Result<(), sqlx::Error> {
         sqlx::query!("UPDATE addons SET filename = NULL WHERE scan_id != ?", id)
+            .execute(&self.pool).await?;
+        sqlx::query!("UPDATE workshop_items SET src = '' WHERE scan_id != ?", id)
             .execute(&self.pool).await?;
         Ok(())
     }
