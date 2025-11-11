@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { AddonEntry } from '../types/Addon.ts';
 import AddonRow from './AddonRow.vue';
 import { getAddonContents } from '../js/app.ts';
@@ -94,10 +94,15 @@ function onRefresh() {
     emit('refresh')
     if(selectedEntry.value) {
         // Update the selected addon modal with the updated data from the list
-        const newSelectedEntry = props.addons.find(entry => entry.id === selectedEntry.value!.id)
-        selectedEntry.value = newSelectedEntry ?? null
+        console.debug('replaced selectedEntry', selectedEntry.value?.id)
     }   
 }
+
+watch(() => props.addons, () => {
+    if(selectedEntry) {
+        selectedEntry.value = props.addons.find(entry => entry.id === selectedEntry.value!.id) ?? null
+    }
+})
 
 const filteredAddons = computed(() => {
     if(query.value === "") return props.addons
