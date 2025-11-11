@@ -99,7 +99,7 @@ function onRefresh() {
 }
 
 watch(() => props.addons, () => {
-    if(selectedEntry) {
+    if(selectedEntry.value) {
         selectedEntry.value = props.addons.find(entry => entry.id === selectedEntry.value!.id) ?? null
     }
 })
