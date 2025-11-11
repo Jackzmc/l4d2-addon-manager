@@ -127,6 +127,15 @@ impl AddonStorage {
         Ok(())
     }
 
+    /// Returns (# of addons, # of workshop items)
+    pub async fn counts(&self) -> Result<(u32, u32), sqlx::Error> {
+        let total = sqlx::query_as::<_, (u32, u32)>(
+            r#"select (select count(*) from addons), (select count(*) from workshop_items)"#
+        )
+            .fetch_one(&self.pool).await?;
+        Ok(total)
+    }
+
     pub async fn list(&self) -> Result<Vec<AddonEntry>, sqlx::Error> {
         // TODO: include workshop_items.*
         Ok(sqlx::query_as::<_, FullAddonWithTagsList>(r#"
@@ -134,7 +143,7 @@ impl AddonStorage {
                 from addons
                 left join addon_tags tags on tags.hash = addons.file_hash
                 left join workshop_items wi on wi.publishedfileid = addons.workshop_id
-                group by addons.filename
+                group by addons.file_hash
             "#
         )
             .fetch_all(&self.pool).await?
@@ -153,15 +162,6 @@ impl AddonStorage {
                 }
             })
             .collect::<Vec<AddonEntry>>())
-    }
-
-    /// Returns (# of addons, # of workshop items)
-    pub async fn counts(&self) -> Result<(u32, u32), sqlx::Error> {
-        let total = sqlx::query_as::<_, (u32, u32)>(
-            r#"select (select count(*) from addons), (select count(*) from workshop_items)"#
-        )
-            .fetch_one(&self.pool).await?;
-        Ok(total)
     }
 
     pub async fn list_workshop(&self) -> Result<Vec<AddonEntry>, sqlx::Error> {
