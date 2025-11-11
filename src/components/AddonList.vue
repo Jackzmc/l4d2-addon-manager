@@ -35,26 +35,15 @@
     </tbody>
 </table>
 
-<ModalCard v-if="selectedEntry" :title="selectedEntry.addon.title" active @close="setDetailAddon(null)">
-    <AddonInfoTable :entry="selectedEntry" />
-    <template #footer>
-        <div class="buttons">
-            <!-- <button class="button" @click="selectedEntry = null">Close</button> -->
-            <button class="button is-link">Disable Addon</button>
-            <button class="button is-link is-outlined">Enable Addon</button>
-            <button class="button is-danger is-outlined">Delete</button>
-        </div>
-    </template>
-</ModalCard>
+<AddonInfoModal v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" />
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { AddonEntry } from '../types/Addon.ts';
 import AddonRow from './AddonRow.vue';
-import ModalCard from './ModalCard.vue';
-import AddonInfoTable from './AddonInfoTable.vue';
 import { getAddonContents } from '../js/app.ts';
+import AddonInfoModal from './modals/AddonInfoModal.vue';
 
 const emit = defineEmits(["refresh"])
 
