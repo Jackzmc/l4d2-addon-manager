@@ -43,14 +43,18 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     }
 
     // Extract all workshop ids from workshop addons folder
-    let ws_addons: Vec<i64> = get_vpks_in_dir(&path.join("workshop"))
-        .expect("failed to scan ws dir")
-        .into_iter()
-        .map(|item| item.file_stem().unwrap().to_string_lossy().parse::<i64>())
-        // Remove any files that don't have a valid ID:
-        .filter(|item| item.is_ok())
-        .map(|item| item.unwrap())
-        .collect();
+    let ws_addons: Vec<i64> = match get_vpks_in_dir(&path.join("workshop")) {
+        Ok(list) => list.into_iter()
+            .map(|item| item.file_stem().unwrap().to_string_lossy().parse::<i64>())
+            // Remove any files that don't have a valid ID:
+            .filter(|item| item.is_ok())
+            .map(|item| item.unwrap())
+            .collect(),
+        Err(e) => {
+            error!("failed to scan workshop dir: {}", e);
+            Vec::new()
+        }
+    };
 
     // Allow aborting early right before we enter the main process loop
     if !running_signal.load(Ordering::SeqCst) {
