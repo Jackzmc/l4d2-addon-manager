@@ -24,7 +24,7 @@
         </tr>
     </thead>
     <tbody>
-        <AddonRow v-for="entry in filteredAddons" :key="entry.addon.filename" 
+        <AddonRow v-for="(entry, i) in filteredAddons" :key="i" 
             :entry="entry" 
             :selected="isSelected(entry)"
             :workshop="workshop"
@@ -35,7 +35,7 @@
     </tbody>
 </table>
 
-<AddonInfoModal v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" @refresh="emit('refresh')" />
+<AddonInfoModal v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" @refresh="onRefresh" />
 </template>
 
 <script setup lang="ts">
@@ -88,6 +88,12 @@ function onTagSelected(tag: string) {
         query.value += " "
     }
     query.value += `#${tag}`
+}
+
+function onRefresh() {
+    emit('refresh')
+    // TODO: replace selected entry
+    // const newSelectedEntry = props.addons.find(entry => entry.addon.)
 }
 
 const filteredAddons = computed(() => {

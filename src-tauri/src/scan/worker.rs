@@ -1,4 +1,3 @@
-use std::hash::Hash;
 use l4d2_addon_parser::L4D2Addon;
 use l4d2_addon_parser::AddonInfo;
 use crate::scan::helpers::find_workshop_id;
@@ -11,7 +10,6 @@ use crate::scan::ScanCounter;
 use std::sync::Arc;
 use crate::store::AddonStorageContainer;
 use std::path::PathBuf;
-use steam_workshop_api::WorkshopItem;
 use log::{error, trace};
 use log::debug;
 use std::os::unix::fs::MetadataExt;

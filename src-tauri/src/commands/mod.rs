@@ -1,17 +1,17 @@
+use crate::cfg::AppConfigContainer;
+use crate::cfg::{AppConfig, StaticData};
+use crate::store::AddonStorageContainer;
+use crate::util::SetRoute;
+use log::{debug, info};
+use serde::Serialize;
 use std::fs::{read_dir, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use crate::cfg::{AppConfig, StaticData};
-use log::{debug, info};
-use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::DialogExt;
-use zip::result::{ZipError, ZipResult};
-use zip::write::{FileOptions, SimpleFileOptions};
+use zip::result::{ZipError};
+use zip::write::{SimpleFileOptions};
 use zip::ZipWriter;
-use crate::cfg::AppConfigContainer;
-use crate::store::AddonStorageContainer;
-use crate::util::SetRoute;
 
 pub mod config;
 pub mod addons;

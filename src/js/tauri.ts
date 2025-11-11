@@ -55,12 +55,42 @@ export async function abortScan(reason?: string): Promise<void> {
     return await tryInvoke("addons_abort_scan", { reason })
 }
 
-export async function migrateWorkshopAddons(ids: number[]): Promise<void> {
-    return await tryInvoke("addons_migrate", { ids })
+export async function migrateWorkshopAddons(ids: number[]): Promise<ItemResult[]> {
+    const results: ItemResult[] = await tryInvoke("addons_migrate", { ids })
+    const errors = handleItemResults(results)
+    if(errors === 0) {
+        notify({
+            type: "success",
+            title: "Migration successful",
+            text: `${results.length} addons have been moved to trash`
+        })
+    } else {
+        notify({
+            type: errors === results.length ? "error" : "warn",
+            title: "Migration had errors",
+            text: `${errors} / ${results.length} addons failed to be migrated. See logs for info`
+        })
+    }
+    return results
 }
 
-export async function unsubscribeAddons(ids: number[]): Promise<void> {
-    return await tryInvoke("addons_unsubscribe", { ids })
+export async function unsubscribeAddons(ids: number[]): Promise<ItemResult[]> {
+    const results: ItemResult[] = await tryInvoke("addons_unsubscribe", { ids })
+    const errors = handleItemResults(results)
+    if(errors === 0) {
+        notify({
+            type: "success",
+            title: "Unsubscribe successful",
+            text: `${results.length} addons have been unsubscribed`
+        })
+    } else {
+        notify({
+            type: errors === results.length ? "error" : "warn",
+            title: "Addons had errors",
+            text: `${errors} / ${results.length} addons failed to be unsubscribed from. See logs for info`
+        })
+    }
+    return results
 }
 
 export async function setAddonState(filenames: string[], state: boolean): Promise<ItemResult[]> {
@@ -80,7 +110,6 @@ export async function setAddonState(filenames: string[], state: boolean): Promis
             text: `${errors} / ${results.length} addons failed to be ${stateText}. See logs for info`
         })
     }
-    return results
     return results
 }
 

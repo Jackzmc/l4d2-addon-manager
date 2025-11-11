@@ -4,9 +4,10 @@ use log::{debug, error, info};
 use serde::Serialize;
 use sqlx::__rt::spawn_blocking;
 use tauri::State;
-use crate::store::{AddonEntry, AddonFlags, AddonStorageContainer};
+use crate::store::{AddonEntry, AddonStorageContainer};
 use crate::cfg::AppConfigContainer;
 use crate::scan::ScannerContainer;
+use crate::util::get_addon_list;
 
 #[tauri::command]
 pub async fn addons_counts(addons: State<'_, AddonStorageContainer>) -> Result<(u32, u32), String> {
@@ -15,15 +16,17 @@ pub async fn addons_counts(addons: State<'_, AddonStorageContainer>) -> Result<(
 }
 
 #[tauri::command]
-pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>) -> Result<Vec<AddonEntry>, String> {
+pub async fn addons_list_managed(addons: State<'_, AddonStorageContainer>, cfg: State<'_, AppConfigContainer>) -> Result<Vec<AddonEntry>, String> {
+    let addon_list = get_addon_list(cfg).await;
     let addons = addons.lock().await;
-    addons.list().await.map_err(|e| e.to_string())
+    addons.list(addon_list).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn addons_list_workshop(addons: State<'_, AddonStorageContainer>) -> Result<Vec<AddonEntry>, String> {
+pub async fn addons_list_workshop(addons: State<'_, AddonStorageContainer>, cfg: State<'_, AppConfigContainer>,) -> Result<Vec<AddonEntry>, String> {
+    let addon_list = get_addon_list(cfg).await;
     let addons = addons.lock().await;
-    addons.list_workshop().await.map_err(|e| e.to_string())
+    addons.list_workshop(addon_list).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -131,7 +134,7 @@ pub async fn addons_unsubscribe(ids: Vec<i64>, cfg: State<'_, AppConfigContainer
 }
 
 #[tauri::command]
-pub async fn addons_set_state(cfg: State<'_, AppConfigContainer>, filenames: Vec<String>, state: bool) -> Result<(), String> {
+pub async fn addons_set_state(cfg: State<'_, AppConfigContainer>, filenames: Vec<String>, state: bool) ->  Result<Vec<ItemResult>, String> {
     // ASSUMPTION: Only running for addons in main folder, not workshop folder
     let addonslist_path = {
         let cfg = cfg.lock().await;
@@ -140,11 +143,12 @@ pub async fn addons_set_state(cfg: State<'_, AppConfigContainer>, filenames: Vec
     debug!("addonlist.txt at {:?}", addonslist_path);
     // TODO: test disabling it via addonlist.txt (if it gets overwritten, works). if not then .disabled suffix
     let mut list = AddonList::new(&addonslist_path).map_err(|e| format!("failed to check state: {}", e))?;
-    for filename in filenames {
-        debug!("{} state = {}", filename, list.is_enabled(&filename));
-        list.set_enabled(filename, state).map_err(|e| format!("failed to set state {}", e))?;
-    }
-    Ok(())
+    Ok(filenames.into_iter().map(|filename| {
+        match list.set_enabled(filename.to_string(), state) {
+            Ok(()) => ItemResult::ok(filename),
+            Err(err) => ItemResult::error(filename, err.to_string())
+        }
+    }).collect())
 }
 
 #[tauri::command]
@@ -154,15 +158,6 @@ pub async fn addons_delete(cfg: State<'_, AppConfigContainer>, filenames: Vec<St
         let cfg = cfg.lock().await;
         cfg.addons_folder.as_ref().ok_or("addons folder missing".to_string())?.to_owned()
     };
-    // let mut results: Vec<ItemResult> = Vec::new();
-    // let addons = addons.lock().await;
-    // for filename in filenames {
-    //     let path = addons_folder.join(&filename);
-    //     results.push(match trash::delete(&path){
-    //         Ok(_) => ItemResult::ok(filename),
-    //         Err(e) => ItemResult::error(filename, e.to_string())
-    //     });
-    // }
     let results: Vec<ItemResult> = filenames.into_iter()
         .map(|filename| {
             let path = addons_folder.join(&filename);
@@ -178,7 +173,6 @@ pub async fn addons_delete(cfg: State<'_, AppConfigContainer>, filenames: Vec<St
         _ => None
     }).collect();
     let addons = addons.lock().await;
-    addons.delete_filenames(deleted_filenames).await.map_err(|e| e.to_string());
-
+    addons.delete_filenames(deleted_filenames).await.map_err(|e| e.to_string())?;
     Ok(results)
 }

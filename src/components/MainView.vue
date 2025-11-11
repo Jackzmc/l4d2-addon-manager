@@ -67,7 +67,7 @@ onMounted(async() => {
             notify({
                 type: type,
                 title: `Scan complete ${(event.payload.failed > 0 ) ? 'with errors' : ''}`,
-                text: `${event.payload.total} files scanned, ${event.payload.added} new addons found, ${event.payload.failed} errors`
+                text: `${event.payload.total} files scanned, ${event.payload.added} new addons found, ${event.payload.failed} errors\nSee logs for details`
             })
             triggerPageRefresh()
             isScanActive.value = false

@@ -9,7 +9,9 @@
     <tbody>
         <tr>
             <td><b>State</b></td>
-            <td>️✅ Enabled</td>
+            <td v-if="props.entry.enabled">️✅ Enabled</td>
+            <td v-else-if="props.entry.enabled === false">❌ Disabled</td>
+            <td v-else><em>Unknown</em></td>
         </tr>
         <tr>
             <td><b>Filename</b></td>

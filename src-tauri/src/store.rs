@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use bitflags::bitflags;
 use chrono::DateTime;
+use l4d2_addon_parser::addon_list::AddonList;
 use l4d2_addon_parser::AddonInfo;
 use log::{info};
 use serde::{Deserialize, Serialize};
@@ -80,28 +81,31 @@ pub struct AddonData {
     pub workshop_id: Option<i64>,
 }
 
-
-
 #[derive(Serialize)]
 pub struct AddonEntry {
+    // /// ID of addon, either workshop id or file hash
+    // pub id: String,
     /// Info about addon and its file
     pub addon: AddonData,
     /// If a workshop entry is linked, its contents here
     pub workshop_info: Option<WorkshopEntry>,
     /// A list of user added tags for entry
     pub tags: Vec<String>,
+
+    /// Is addon enabled? Can be None if file missing
+    pub enabled: Option<bool>
 }
 
 pub struct AddonStorage {
     pool: Pool<Sqlite>,
-    db_path: PathBuf
+    db_path: PathBuf,
 }
 
 pub type AddonStorageContainer = Arc<Mutex<AddonStorage>>;
 
 impl AddonStorage {
     pub async fn new(store_folder: PathBuf) -> Result<Self, String> {
-        std::fs::create_dir_all(&store_folder).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&store_folder).map_err(|e| e.to_string())?;
         let db_path = store_folder.join("addon-manager.db");
         let connection_options = sqlx::sqlite::SqliteConnectOptions::new()
             .filename(&db_path)
@@ -137,7 +141,7 @@ impl AddonStorage {
         Ok(total)
     }
 
-    pub async fn list(&self) -> Result<Vec<AddonEntry>, sqlx::Error> {
+    pub async fn list(&self, addon_list: Option<AddonList>) -> Result<Vec<AddonEntry>, sqlx::Error> {
         // TODO: include workshop_items.*
         Ok(sqlx::query_as::<_, FullAddonWithTagsList>(r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
@@ -155,17 +159,18 @@ impl AddonStorage {
                 } else {
                     vec![]
                 };
-
                 AddonEntry {
+                    // id: entry.data.
+                    enabled: addon_list.as_ref().map(|list| list.is_enabled(&entry.data.filename)),
                     addon: entry.data,
                     workshop_info: None,
-                    tags
+                    tags,
                 }
             })
             .collect::<Vec<AddonEntry>>())
     }
 
-    pub async fn list_workshop(&self) -> Result<Vec<AddonEntry>, sqlx::Error> {
+    pub async fn list_workshop(&self, addon_list: Option<AddonList>) -> Result<Vec<AddonEntry>, sqlx::Error> {
         Ok(sqlx::query_as::<_, WorkshopEntry>(r#"
                 select *
                 from workshop_items
@@ -174,24 +179,29 @@ impl AddonStorage {
             "#
         )
             .fetch_all(&self.pool).await?
-            .into_iter().map(|entry| AddonEntry {
-                addon: AddonData {
-                    filename: format!("{}.vpk", entry.publishedfileid),
-                    created_at: chrono::DateTime::from_timestamp_secs(entry.time_created).unwrap(),
-                    updated_at: chrono::DateTime::from_timestamp_secs(*entry.time_updated.as_ref().unwrap()).unwrap(),
-                    file_size: entry.file_size as i64,
-                    flags: AddonFlags(0),
-                    title: entry.title.clone(),
-                    author: Some(entry.creator_id.to_string()),
-                    version: "workshop".to_string(),
-                    tagline: None,
-                    chapter_ids: None,
-                    workshop_id: Some(entry.publishedfileid as i64),
-                },
-                tags: entry.tags.split(',').map(|s| s.to_string()).collect(),
-                workshop_info: Some(entry),
+            .into_iter().map(|entry| {
+                let filename = format!("{}.vpk", entry.publishedfileid);
+                AddonEntry {
+                    // id: entry.publishedfileid.to_string(),
+                    enabled: addon_list.as_ref().map(|list| list.is_enabled(&filename)),
+                    addon: AddonData {
+                        filename: filename,
+                        created_at: chrono::DateTime::from_timestamp_secs(entry.time_created).unwrap(),
+                        updated_at: chrono::DateTime::from_timestamp_secs(*entry.time_updated.as_ref().unwrap()).unwrap(),
+                        file_size: entry.file_size as i64,
+                        flags: AddonFlags(0),
+                        title: entry.title.clone(),
+                        author: Some(entry.creator_id.to_string()),
+                        version: "workshop".to_string(),
+                        tagline: None,
+                        chapter_ids: None,
+                        workshop_id: Some(entry.publishedfileid as i64),
+                    },
+                    tags: entry.tags.split(',').map(|s| s.to_string()).collect(),
+                    workshop_info: Some(entry),
+                }
             })
-            .collect::<Vec<AddonEntry>>())
+                .collect::<Vec<AddonEntry>>())
     }
 
     pub async fn list_workshop_ids(&self) -> Result<Vec<i64>, sqlx::Error> {

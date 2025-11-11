@@ -5,8 +5,8 @@ import { AddonEntry } from '../../types/Addon';
     <template #footer>
         <div class="buttons" v-if="props.entry.addon.filename">
             <!-- <button class="button" @click="selectedEntry = null">Close</button> -->
-            <button @click="onSetState(false)" class="button is-link">Disable Addon</button>
-            <button @click="onSetState(true)" class="button is-link is-outlined">Enable Addon</button>
+            <button v-if="props.entry.enabled" @click="onSetState(false)" class="button is-link">Disable Addon</button>
+            <button v-else-if="props.entry.enabled === false" @click="onSetState(true)" class="button is-link is-outlined">Enable Addon</button>
             <button @click="onDeletePressed" class="button is-danger is-outlined">Delete</button>
         </div>
         <span v-else>
@@ -30,12 +30,11 @@ const props = defineProps<{
 }>()
 
 async function onSetState(state: boolean) {
-    console.debug("ststate", [props.entry.addon.filename])
     await setAddonState([props.entry.addon.filename], state)
+    emit("refresh")
 }
 
 async function onDeletePressed() {
-    console.debug("delete", [props.entry.addon.filename])
     await deleteAddons([props.entry.addon.filename])
     emit("refresh")
     emit("close")

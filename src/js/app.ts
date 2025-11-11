@@ -22,7 +22,6 @@ export function getAddonContents(flags: number): string[] {
 
 /** returns # of errors and prints results */
 export function handleItemResults(results: ItemResult[]) {
-    console.debug(results)
     const errorCount = results.filter((entry) => entry.result === "error").length
     if(errorCount > 0) {
         for(const entry of results) {

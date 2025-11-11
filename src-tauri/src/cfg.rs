@@ -74,7 +74,7 @@ impl AppConfig {
         }
         if let Some(addons_folder) = &new_config.addons_folder {
             let meta = fs::metadata(addons_folder.as_path())
-                .map_err(|e| "Addons folder must exist and be readable".to_string())?;
+                .map_err(|_| "Addons folder must exist and be readable".to_string())?;
             if !meta.is_dir() {
                 return Err("Addons folder must be a directory".to_string());
             }
