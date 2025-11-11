@@ -5,8 +5,8 @@ import { AddonEntry } from '../../types/Addon';
     <template #footer>
         <div class="buttons" v-if="props.entry.info.filename">
             <!-- <button class="button" @click="selectedEntry = null">Close</button> -->
-            <button v-if="props.entry.enabled" @click="onSetState(false)" class="button is-link">Disable Addon</button>
-            <button v-else-if="props.entry.enabled === false" @click="onSetState(true)" class="button is-link is-outlined">Enable Addon</button>
+            <button v-if="props.entry.enabled" @click="onSetState(false)" class="button is-link  is-outlined">Disable Addon</button>
+            <button v-else-if="props.entry.enabled === false" @click="onSetState(true)" class="button is-link">Enable Addon</button>
             <button @click="onDeletePressed" class="button is-danger is-outlined">Delete</button>
         </div>
         <span v-else>
@@ -18,6 +18,7 @@ import { AddonEntry } from '../../types/Addon';
 </template>
 
 <script setup lang="ts">
+import { confirm } from '@tauri-apps/plugin-dialog';
 import { deleteAddons, setAddonState } from '../../js/tauri.ts';
 import { AddonEntry } from '../../types/Addon.ts';
 import AddonInfoTable from '../AddonInfoTable.vue';
@@ -35,9 +36,12 @@ async function onSetState(state: boolean) {
 }
 
 async function onDeletePressed() {
-    await deleteAddons([props.entry.info.filename])
-    emit("refresh")
-    emit("close")
+    if(await confirm(`Are you sure you want to delete "${props.entry.info.title}"? It will be moved to trash and removed from the manager.`, { title: "Confirm Deletion", okLabel: "Delete" })) {
+        await deleteAddons([props.entry.info.filename])
+        emit("refresh")
+        emit("close")
+    }
+
 }
 
 </script>

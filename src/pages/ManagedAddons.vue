@@ -2,8 +2,8 @@
 <div>
     <AddonList :addons="addons" @refresh="refresh">
         <template #select-buttons="{selected}">
-            <button class="level-item button is-success" @click="onSetStatePressed(selected, true)">Enable</button>
-            <button class="level-item button is-warning" @click="onSetStatePressed(selected, false)">Disable</button>
+            <button class="level-item button is-link" @click="onSetStatePressed(selected, true)">Enable</button>
+            <button class="level-item button is-link is-outlined" @click="onSetStatePressed(selected, false)">Disable</button>
             <button class="level-item button is-danger" @click="onDeletePressed(selected)">Delete</button>
         </template>
     </AddonList>
@@ -18,6 +18,7 @@ import { onMounted, ref } from 'vue';
 import { AddonEntry } from '../types/Addon.ts';
 import { deleteAddons, setAddonState, listAddons } from '../js/tauri.ts';
 import AddonList from '../components/AddonList.vue';
+import { confirm } from '@tauri-apps/plugin-dialog';
 
 const addons = ref<AddonEntry[]>([])
 
@@ -31,7 +32,10 @@ async function onSetStatePressed(filenames: string[], state: boolean) {
 }
 
 async function onDeletePressed(filenames: string[]) {
-    await deleteAddons(filenames)
+    if(await confirm(`Are you sure you want to delete these addons? They will be moved to trash and removed from the manager.`, { title: "Confirm Deletion", okLabel: "Delete" })) {
+        await deleteAddons(filenames)
+        await refresh()
+    }
 }
 
 onMounted(() => {
