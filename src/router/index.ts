@@ -3,6 +3,7 @@ import { createMemoryHistory, createRouter, createWebHashHistory } from 'vue-rou
 import Setup from '../pages/Setup.vue'
 import MainView from '../components/MainView.vue'
 import Loading from '../pages/Loading.vue'
+import LogsPage from '@/pages/Logs.vue'
 
 const routes = [
   { path: '/', component: Loading },
@@ -15,6 +16,7 @@ const routes = [
       { name: "addons-workshop", path: 'addons/workshop',  component: () => import('@/pages/WorkshopAddons.vue')  },
       { name: "settings", path: 'settings',  component: () => import('@/pages/Settings.vue')  },
       { name: "export", path: 'export',  component: () => import('@/pages/Export.vue')  },
+      { name: "logs", path: 'logs',  component: LogsPage  },
     ]
   }
 ]

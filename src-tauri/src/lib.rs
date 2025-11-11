@@ -1,3 +1,4 @@
+use tauri_plugin_log::Target;
 use std::str::FromStr;
 use log::{debug, LevelFilter};
 use crate::cfg::AppConfig;
@@ -6,6 +7,7 @@ use crate::commands::addons as cmd_addons;
 use std::sync::{Arc};
 use tauri::async_runtime::Mutex;
 use tauri::{Manager, RunEvent};
+use tauri_plugin_log::{RotationStrategy, TargetKind, WEBVIEW_TARGET};
 use crate::store::{AddonStorage, AddonStorageContainer};
 use crate::scan::AddonScanner;
 
@@ -33,6 +35,8 @@ pub fn run() {
             // Set default level to INFO, but our crate TRACE
             .level(log::LevelFilter::Info)
             .level_for("l4d2_addon_manager_lib", log_level())
+            // in addition to defaults, also send to frontend
+            .target(Target::new(TargetKind::Webview))
             .build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -60,6 +64,7 @@ pub fn run() {
             commands::init,
             commands::export,
             commands::clear_database,
+            commands::get_logs,
             cmd_config::choose_game_folder,
             cmd_config::set_game_folder,
             cmd_config::set_config,

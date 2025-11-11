@@ -21,6 +21,9 @@
     <router-link class="panel-block" :to="{ name: 'export'}">
         Export
     </router-link>
+    <router-link class="panel-block" :to="{ name: 'logs'}">
+        Logs
+    </router-link>
 
     <footer v-if="appData">
         v{{ appData.app_version }}

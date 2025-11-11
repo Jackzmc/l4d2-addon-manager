@@ -5,7 +5,11 @@
         </div>
         <main class="column mt-3 section-component">
             <router-view v-slot="{ Component }">
-                <component ref="view" :is="Component" :config="config" />
+                <Transition>
+                    <keep-alive include="Logs">
+                            <component ref="view" :is="Component" :config="config" />
+                    </keep-alive>
+                </Transition>
             </router-view>
         </main>
     </div>
@@ -14,7 +18,7 @@
 <script setup lang="ts">
 import Sidebar from '@/components/Sidebar.vue'
 import { notify } from '@kyvg/vue3-notification';
-import { AppConfig, onMounted, ref } from 'vue';
+import { AppConfig, onMounted, ref, Transition } from 'vue';
 import { AddonCounts, ScanResultEvent, ScanResultMessage, ScanStateEvent, StaticAppData } from '../types/App.ts';
 import { listen } from '@tauri-apps/api/event';
 import { abortScan, countAddons, startScan } from '../js/tauri.ts';

@@ -1,7 +1,7 @@
 import { invoke, InvokeArgs, InvokeOptions } from '@tauri-apps/api/core'
 import { AddonEntry } from '../types/Addon.ts';
 import { notify } from '@kyvg/vue3-notification';
-import { AddonCounts, AppConfig, InitAppData, ItemResult } from '../types/App.ts';
+import { AddonCounts, AppConfig, InitAppData, ItemResult, LogEntry } from '../types/App.ts';
 import { handleItemResults } from './app.ts';
 
 async function tryInvoke<T>(cmd: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
@@ -137,4 +137,8 @@ export async function exportApp(withAddons: boolean): Promise<void> {
 
 export async function resetDatabase(): Promise<void> {
     return await tryInvoke("reset_db")
+}
+
+export async function getLogs(): Promise<LogEntry[]> {
+    return await tryInvoke("get_logs")
 }

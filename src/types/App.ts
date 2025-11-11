@@ -1,3 +1,5 @@
+import { LogLevel } from "@tauri-apps/plugin-log"
+
 export interface SetRoute {
     name?: string
 }
@@ -64,4 +66,9 @@ export interface ItemResult_Error {
     result: "error",
     filename: string,
     error: string
+}
+
+export interface LogEntry {
+    message: string, 
+    level: LogLevel
 }

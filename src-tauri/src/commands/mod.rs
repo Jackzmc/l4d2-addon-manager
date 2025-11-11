@@ -5,7 +5,7 @@ use crate::util::SetRoute;
 use log::{debug, info};
 use serde::Serialize;
 use std::fs::{read_dir, File};
-use std::io::{Read, Write};
+use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::DialogExt;
@@ -45,6 +45,20 @@ pub async fn init(config: State<'_, AppConfigContainer>, data: State<'_, StaticD
         config
     })
 }
+
+#[derive(Serialize)]
+pub struct LogEntry {
+    message: String
+}
+#[tauri::command]
+pub async fn get_logs(app: AppHandle) -> Result<Vec<LogEntry>, String> {
+    let logs_path = app.path().app_local_data_dir().unwrap().join("logs").join(format!("{}.log", env!("CARGO_PKG_NAME")));
+    debug!("logs_path = {:?}", logs_path);
+    let file = File::open(logs_path).map_err(|e| e.to_string())?;
+    let buff = std::io::BufReader::new(file);
+    Ok(buff.lines().map(|l| LogEntry { message: l.unwrap() }).collect())
+}
+
 
 // TODO: move all this to export module, with proper multithreading for with_addons
 #[tauri::command]
