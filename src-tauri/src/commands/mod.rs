@@ -110,6 +110,6 @@ fn zip_folder_path<T>(zip: &mut ZipWriter::<T>, folder_name: &str, path: PathBuf
 #[tauri::command]
 pub async fn clear_database(addons: State<'_, AddonStorageContainer>, app: AppHandle) -> Result<(), String> {
     let addons = addons.lock().await;
-    addons.danger_delete().await.map_err(|e| e.to_string())?;
+    addons.danger_drop_database().await.map_err(|e| e.to_string())?;
     app.restart();
 }

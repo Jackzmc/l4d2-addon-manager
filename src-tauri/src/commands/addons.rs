@@ -148,13 +148,22 @@ pub async fn addons_set_state(cfg: State<'_, AppConfigContainer>, filenames: Vec
 }
 
 #[tauri::command]
-pub async fn addons_delete(cfg: State<'_, AppConfigContainer>, filenames: Vec<String>) -> Result<Vec<ItemResult>, String> {
+pub async fn addons_delete(cfg: State<'_, AppConfigContainer>, filenames: Vec<String>, addons: State<'_, AddonStorageContainer>) -> Result<Vec<ItemResult>, String> {
     // ASSUMPTION: Only running for addons in main folder, not workshop folder
     let addons_folder = {
         let cfg = cfg.lock().await;
         cfg.addons_folder.as_ref().ok_or("addons folder missing".to_string())?.to_owned()
     };
-    Ok(filenames.into_iter()
+    // let mut results: Vec<ItemResult> = Vec::new();
+    // let addons = addons.lock().await;
+    // for filename in filenames {
+    //     let path = addons_folder.join(&filename);
+    //     results.push(match trash::delete(&path){
+    //         Ok(_) => ItemResult::ok(filename),
+    //         Err(e) => ItemResult::error(filename, e.to_string())
+    //     });
+    // }
+    let results: Vec<ItemResult> = filenames.into_iter()
         .map(|filename| {
             let path = addons_folder.join(&filename);
             match trash::delete(&path){
@@ -162,6 +171,14 @@ pub async fn addons_delete(cfg: State<'_, AppConfigContainer>, filenames: Vec<St
                 Err(e) => ItemResult::error(filename, e.to_string())
             }
         })
-        .collect()
-    )
+        .collect();
+    // Delete their entries from db
+    let deleted_filenames: Vec<String> = results.iter().filter_map(|result| match result {
+        ItemResult::Ok { filename } => Some(filename.to_string()),
+        _ => None
+    }).collect();
+    let addons = addons.lock().await;
+    addons.delete_filenames(deleted_filenames).await.map_err(|e| e.to_string());
+
+    Ok(results)
 }

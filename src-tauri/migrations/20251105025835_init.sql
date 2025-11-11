@@ -1,3 +1,4 @@
+PRAGMA foreign_keys = ON;
 -- Add migration script here
 create table addons
 (
@@ -24,10 +25,10 @@ create table addons
 
 create table addon_tags
 (
-    hash blob not null,
-    tag      text not null,
+    hash    blob not null,
+    tag     text not null,
     primary key (hash, tag)
-    foreign key (hash) references addons (hash)  ON UPDATE CASCADE ON DELETE CASCADE
+    foreign key (hash) references addons (file_hash)  ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 create table workshop_items

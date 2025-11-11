@@ -9,7 +9,7 @@ use chrono::DateTime;
 use l4d2_addon_parser::AddonInfo;
 use log::{info};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Pool, QueryBuilder, Sqlite};
+use sqlx::{AssertSqlSafe, FromRow, Pool, QueryBuilder, Sqlite};
 use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
@@ -106,6 +106,7 @@ impl AddonStorage {
         let connection_options = sqlx::sqlite::SqliteConnectOptions::new()
             .filename(&db_path)
             .create_if_missing(true)
+            .foreign_keys(true)
             .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal);
         let pool = sqlx::sqlite::SqlitePool::connect_with(connection_options).await
             .map_err(|e| e.to_string())?;
@@ -319,8 +320,19 @@ impl AddonStorage {
         Ok(())
     }
 
+    pub async fn delete_filenames(&self, filenames: Vec<String>) -> Result<(), sqlx::Error> {
+        let params = format!("?{}", ", ?".repeat(filenames.len()-1));
+        // dynamically add ?, ?, ?... to number of filenames
+        let mut query = sqlx::query(AssertSqlSafe(format!("DELETE FROM addons WHERE filename IN ({})", params)));
+        for filename in filenames {
+            query = query.bind(filename);
+        }
+        query.execute(&self.pool).await?;
+        Ok(())
+    }
+
     /// Wipes all data from database
-    pub async fn danger_delete(&self) -> Result<(), std::io::Error> {
+    pub async fn danger_drop_database(&self) -> Result<(), std::io::Error> {
         self.pool.close().await;
         fs::remove_file(&self.db_path)
     }

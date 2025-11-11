@@ -35,7 +35,7 @@
     </tbody>
 </table>
 
-<AddonInfoModal v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" />
+<AddonInfoModal v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" @refresh="emit('refresh')" />
 </template>
 
 <script setup lang="ts">

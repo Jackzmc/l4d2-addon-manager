@@ -23,7 +23,7 @@ import { AddonEntry } from '../../types/Addon.ts';
 import AddonInfoTable from '../AddonInfoTable.vue';
 import ModalCard from '../ModalCard.vue';
 
-const emit = defineEmits(["close", "set-state", "delete"])
+const emit = defineEmits(["close", "refresh", "set-state", "delete"])
 
 const props = defineProps<{
     entry: AddonEntry
@@ -37,6 +37,8 @@ async function onSetState(state: boolean) {
 async function onDeletePressed() {
     console.debug("delete", [props.entry.addon.filename])
     await deleteAddons([props.entry.addon.filename])
+    emit("refresh")
+    emit("close")
 }
 
 </script>
