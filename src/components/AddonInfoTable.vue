@@ -15,7 +15,7 @@
         </tr>
         <tr>
             <td><b>Filename</b></td>
-            <td v-if="props.entry.addon.filename">{{ props.entry.addon.filename }}</td>
+            <td v-if="props.entry.info.filename">{{ props.entry.info.filename }}</td>
             <td v-else class="has-text-danger">
                 Missing
                 <!-- <a>(Select file)</a> -->
@@ -31,30 +31,30 @@
         </tr>
         <tr>
             <td><b>File Size</b></td>
-            <td>{{ formatSize(props.entry.addon.file_size) }}</td>
+            <td>{{ formatSize(props.entry.info.file_size) }}</td>
         </tr>
         <tr>
             <td><b>Author</b></td>
-            <td>{{ props.entry.addon.author }}</td>
+            <td>{{ props.entry.info.author }}</td>
         </tr>
         <tr>
             <td><b>Version</b></td>
-            <td>{{ props.entry.addon.version }}</td>
+            <td>{{ props.entry.info.version }}</td>
         </tr>
-        <!-- <tr>
-            <td><b>SHA-256 Hash</b></td>
-            <td>{{ props.entry.hash }}</td>
-        </tr> -->
-        <tr v-if="props.entry.addon.chapter_ids">
+        <tr v-if="!workshop">
+            <td><b>SHA256 Hash</b></td>
+            <td>{{ props.entry.id }}</td>
+        </tr>
+        <tr v-if="props.entry.info.chapter_ids">
             <td><b>Chapter Ids</b></td>
             <td>
                 <div class="tags">
-                    <span class="tag" v-for="tag in props.entry.addon.chapter_ids.split(',')" :key="tag">{{ tag }}</span>
+                    <span class="tag" v-for="tag in props.entry.info.chapter_ids.split(',')" :key="tag">{{ tag }}</span>
                 </div>
             </td>
         </tr>
         <tr>
-            <td><b>Content</b></td>
+            <td><b>Content Types</b></td>
             <td>
                 <div class="tags">
                     <span class="tag" v-for="tag in flags" :key="tag">{{ tag }}</span>
@@ -62,22 +62,23 @@
             </td>
         </tr>
         <tr>
-            <td><b>Tags</b></td>
+            <td><b>My Tags</b></td>
             <td>
-                <div class="tags">
+                <em>In future versions</em>
+                <!-- <div class="tags">
                     <span class="tag" v-for="tag in props.entry.tags" :key="tag">{{ tag }}</span>
-                </div>
+                </div> -->
             </td>
         </tr>
         <tr>
             <td><b>Workshop ID</b></td>
-            <td v-if="props.entry.addon.workshop_id">
-                {{ props.entry.addon.workshop_id}}
-                <a :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + props.entry.addon.workshop_id" target="_blank">
+            <td v-if="props.entry.info.workshop_id">
+                {{ props.entry.info.workshop_id}}
+                <a :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + props.entry.info.workshop_id" target="_blank">
                     (View on Steam Workshop)
                 </a>
             </td>
-            <td v-else><em>not set</em> <a>(Click to set)</a></td>
+            <td v-else><em>not set</em> <!--<a>(Click to set)</a>--></td>
         </tr>
     </tbody>
 </table>
@@ -91,24 +92,24 @@ import { AddonEntry } from '../types/Addon.ts';
 import { getRelDate } from '../js/utils';
 import { getAddonContents } from '../js/app.ts';
 
+const props = defineProps<{
+    entry: AddonEntry,
+    workshop?: boolean
+}>()
+
 const createdAt = computed(() => {
-    return new Date(props.entry.addon.created_at)
+    return new Date(props.entry.info.created_at)
 })
 const createdAtRel = computed(() => {
     return getRelDate(createdAt.value)
 })
 const updatedAt = computed(() => {
-    return new Date(props.entry.addon.updated_at)
+    return new Date(props.entry.info.updated_at)
 })
 const updatedAtRel = computed(() => {
     return getRelDate(updatedAt.value)
 })
-
 const flags = computed(() => {
-    return getAddonContents(props.entry.addon.flags)
+    return getAddonContents(props.entry.info.flags)
 })
-
-const props = defineProps<{
-    entry: AddonEntry
-}>()
 </script>

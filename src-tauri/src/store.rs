@@ -15,9 +15,10 @@ use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
 use tauri::async_runtime::Mutex;
-use crate::models::addon::{FullAddonWithTagsList, PartialAddon, WorkshopEntry};
+use crate::models::addon::{StandardAddonWithTags, PartialAddon, WorkshopEntry};
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// for standard addons
 pub struct AddonFlags(pub u32);
 bitflags! {
     impl AddonFlags: u32 {
@@ -54,13 +55,14 @@ impl Display for FileHash {
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
+/// Information about the addon. This is used by both standard entries and workshop entries
 pub struct AddonData {
     /// Name of the file addon was found in
     pub filename: String,
     /// When addon file was last updated
-    pub updated_at: chrono::DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
     /// When addon file was created
-    pub created_at: chrono::DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
     /// The size in bytes of the addon file
     pub file_size: i64,
 
@@ -83,15 +85,14 @@ pub struct AddonData {
 
 #[derive(Serialize)]
 pub struct AddonEntry {
-    // /// ID of addon, either workshop id or file hash
-    // pub id: String,
+    /// ID of addon, either workshop id or file hash
+    pub id: String,
     /// Info about addon and its file
-    pub addon: AddonData,
+    pub info: AddonData,
     /// If a workshop entry is linked, its contents here
-    pub workshop_info: Option<WorkshopEntry>,
+    pub workshop: Option<WorkshopEntry>,
     /// A list of user added tags for entry
     pub tags: Vec<String>,
-
     /// Is addon enabled? Can be None if file missing
     pub enabled: Option<bool>
 }
@@ -143,7 +144,7 @@ impl AddonStorage {
 
     pub async fn list(&self, addon_list: Option<AddonList>) -> Result<Vec<AddonEntry>, sqlx::Error> {
         // TODO: include workshop_items.*
-        Ok(sqlx::query_as::<_, FullAddonWithTagsList>(r#"
+        Ok(sqlx::query_as::<_, StandardAddonWithTags>(r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
                 from addons
                 left join addon_tags tags on tags.hash = addons.file_hash
@@ -160,10 +161,10 @@ impl AddonStorage {
                     vec![]
                 };
                 AddonEntry {
-                    // id: entry.data.
+                    id: entry.file_hash.to_string(),
                     enabled: addon_list.as_ref().map(|list| list.is_enabled(&entry.data.filename)),
-                    addon: entry.data,
-                    workshop_info: None,
+                    info: entry.data,
+                    workshop: None,
                     tags,
                 }
             })
@@ -182,9 +183,9 @@ impl AddonStorage {
             .into_iter().map(|entry| {
                 let filename = format!("{}.vpk", entry.publishedfileid);
                 AddonEntry {
-                    // id: entry.publishedfileid.to_string(),
+                    id: entry.publishedfileid.to_string(),
                     enabled: addon_list.as_ref().map(|list| list.is_enabled(&filename)),
-                    addon: AddonData {
+                    info: AddonData {
                         filename: filename,
                         created_at: chrono::DateTime::from_timestamp_secs(entry.time_created).unwrap(),
                         updated_at: chrono::DateTime::from_timestamp_secs(*entry.time_updated.as_ref().unwrap()).unwrap(),
@@ -198,7 +199,7 @@ impl AddonStorage {
                         workshop_id: Some(entry.publishedfileid as i64),
                     },
                     tags: entry.tags.split(',').map(|s| s.to_string()).collect(),
-                    workshop_info: Some(entry),
+                    workshop: Some(entry),
                 }
             })
                 .collect::<Vec<AddonEntry>>())

@@ -15,11 +15,12 @@ pub struct PartialAddon {
     pub workshop_id: Option<i64>,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct FullAddonWithTagsList {
-    #[serde(flatten)]
+#[derive(Debug, FromRow)]
+pub struct StandardAddonWithTags {
     #[sqlx(flatten)]
     pub data: AddonData,
+
+    pub file_hash: FileHash,
 
     /// Comma separated list of tags
     pub tags: String

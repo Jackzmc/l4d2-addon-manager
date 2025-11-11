@@ -140,15 +140,16 @@ pub async fn addons_set_state(cfg: State<'_, AppConfigContainer>, filenames: Vec
         let cfg = cfg.lock().await;
         cfg.addons_folder.as_ref().ok_or("addons folder missing".to_string())?.parent().unwrap().join("addonlist.txt")
     };
-    debug!("addonlist.txt at {:?}", addonslist_path);
     // TODO: test disabling it via addonlist.txt (if it gets overwritten, works). if not then .disabled suffix
     let mut list = AddonList::new(&addonslist_path).map_err(|e| format!("failed to check state: {}", e))?;
-    Ok(filenames.into_iter().map(|filename| {
+    let results = filenames.into_iter().map(|filename| {
         match list.set_enabled(filename.to_string(), state) {
             Ok(()) => ItemResult::ok(filename),
             Err(err) => ItemResult::error(filename, err.to_string())
         }
-    }).collect())
+    }).collect();
+    list.save().map_err(|e| format!("failed to save addonlist.txt: {}", e))?;
+    Ok(results)
 }
 
 #[tauri::command]

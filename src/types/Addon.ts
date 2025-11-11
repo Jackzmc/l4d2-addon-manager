@@ -1,4 +1,4 @@
-export interface Addon {
+export interface AddonData {
     filename: string,
     /** ISO Date, parse as Date */
     updated_at: string
@@ -15,8 +15,9 @@ export interface Addon {
 }
 
 export interface AddonEntry {
-    addon: Addon,
-    workshop_info: WorkshopItem | null,
+    id: string,
+    info: AddonData,
+    workshop: WorkshopItem | null,
     tags: string[],
     enabled: boolean
 }

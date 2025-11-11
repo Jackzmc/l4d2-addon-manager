@@ -1,15 +1,18 @@
 <template>
-<tr :class="['row', {'has-background-danger-light': !props.entry.addon.filename }]">
+<tr :class="['row', {'has-background-danger-light': !props.entry.info.filename }]">
     <td>
-        <input v-if="props.entry.addon.filename" type="checkbox" class="checkbox large" @change="emit('select')" :checked="selected" />
+        <input v-if="props.entry.info.filename" type="checkbox" class="checkbox large" @change="emit('select')" :checked="selected" />
     </td>
     <td>
-        <a @click="showDetails">{{ entry.addon.title }}</a>
+        <a @click="showDetails">
+            <strong v-if="entry.enabled">{{ entry.info.title }}</strong>
+            <span v-else class="has-text-black">{{ entry.info.title }}</span>
+        </a>
         <div class="tags" v-if="tags.length > 0">
             <a class="tag has-background-primary-light" v-for="tag in tags" :key="tag" @click="selectTag(tag)">{{ tag }}</a>
         </div>
     </td>
-    <td>{{ formatSize(entry.addon.file_size) }}</td>
+    <td>{{ formatSize(entry.info.file_size) }}</td>
     <!-- <td v-if="!workshop"><span class="tags" v-if="tags.length > 0">
         <span class="tag is-sucess" v-for="flag in tags" :key="flag">{{ flag }}</span>
     </span></td> -->
@@ -26,7 +29,7 @@ import { getAddonContents } from '../js/app.ts';
 const emit = defineEmits(["select", "showDetails", "selectTag"])
 
 const tags = computed(() => {
-    return props.workshop ? props.entry.tags : getAddonContents(props.entry.addon.flags)
+    return props.workshop ? props.entry.tags : getAddonContents(props.entry.info.flags)
 })
 
 const props = defineProps<{

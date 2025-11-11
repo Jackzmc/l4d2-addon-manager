@@ -24,7 +24,7 @@
         </tr>
     </thead>
     <tbody>
-        <AddonRow v-for="(entry, i) in filteredAddons" :key="i" 
+        <AddonRow v-for="entry in filteredAddons" :key="entry.id" 
             :entry="entry" 
             :selected="isSelected(entry)"
             :workshop="workshop"
@@ -35,7 +35,7 @@
     </tbody>
 </table>
 
-<AddonInfoModal v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" @refresh="onRefresh" />
+<AddonInfoModal workshop v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" @refresh="onRefresh" />
 </template>
 
 <script setup lang="ts">
@@ -69,16 +69,16 @@ function setDetailAddon(entry: AddonEntry | null) {
     selectedEntry.value = entry
 }
 function setSelected(entry: AddonEntry, value: boolean) {
-    selected.value[entry.addon.filename] = value
+    selected.value[entry.info.filename] = value
 }
 function isSelected(entry: AddonEntry): boolean {
-    return !!selected.value[entry.addon.filename]
+    return !!selected.value[entry.info.filename]
 }
 function toggleSelectAll(event: InputEvent) {
     const state = (event.target as HTMLInputElement).checked
     const val: Record<string, boolean> = {}
     for(const entry of props.addons) {
-        val[entry.addon.filename] = state
+        val[entry.info.filename] = state
     }
     selected.value = val
 }
@@ -92,20 +92,23 @@ function onTagSelected(tag: string) {
 
 function onRefresh() {
     emit('refresh')
-    // TODO: replace selected entry
-    // const newSelectedEntry = props.addons.find(entry => entry.addon.)
+    if(selectedEntry.value) {
+        // Update the selected addon modal with the updated data from the list
+        const newSelectedEntry = props.addons.find(entry => entry.id === selectedEntry.value!.id)
+        selectedEntry.value = newSelectedEntry ?? null
+    }   
 }
 
 const filteredAddons = computed(() => {
     if(query.value === "") return props.addons
     const q = query.value.toLocaleLowerCase()
     return props.addons.filter(entry => {
-        return entry.addon.title.toLocaleLowerCase().includes(q)
-            || entry.addon.filename.toLocaleLowerCase().includes(q)
-            || entry.addon.tagline?.toLocaleLowerCase().includes(q)
+        return entry.info.title.toLocaleLowerCase().includes(q)
+            || entry.info.filename.toLocaleLowerCase().includes(q)
+            || entry.info.tagline?.toLocaleLowerCase().includes(q)
             // expensive but oh well seems fine
             || entry.tags.some(tag => queryTags.value.includes(tag.toLocaleLowerCase()))
-            || getAddonContents(entry.addon.flags).some(tag => queryTags.value.includes(tag.toLocaleLowerCase()))
+            || getAddonContents(entry.info.flags).some(tag => queryTags.value.includes(tag.toLocaleLowerCase()))
     })
 })
 const queryTags = computed(() => {

@@ -1,9 +1,9 @@
 import { AddonEntry } from '../../types/Addon';
 <template>
-<ModalCard :title="props.entry.addon.title" active @close="emit('close')">
+<ModalCard :title="props.entry.info.title" active @close="emit('close')">
     <AddonInfoTable :entry="entry" />
     <template #footer>
-        <div class="buttons" v-if="props.entry.addon.filename">
+        <div class="buttons" v-if="props.entry.info.filename">
             <!-- <button class="button" @click="selectedEntry = null">Close</button> -->
             <button v-if="props.entry.enabled" @click="onSetState(false)" class="button is-link">Disable Addon</button>
             <button v-else-if="props.entry.enabled === false" @click="onSetState(true)" class="button is-link is-outlined">Enable Addon</button>
@@ -30,12 +30,12 @@ const props = defineProps<{
 }>()
 
 async function onSetState(state: boolean) {
-    await setAddonState([props.entry.addon.filename], state)
+    await setAddonState([props.entry.info.filename], state)
     emit("refresh")
 }
 
 async function onDeletePressed() {
-    await deleteAddons([props.entry.addon.filename])
+    await deleteAddons([props.entry.info.filename])
     emit("refresh")
     emit("close")
 }
