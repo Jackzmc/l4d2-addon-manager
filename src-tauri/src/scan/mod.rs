@@ -45,10 +45,8 @@ impl Display for ScanError {
         match self {
             ScanError::FileError(e) => write!(f, "IO Error: {}", e),
             ScanError::ParseError(e) => write!(f, "Parse Error: {}", e),
-            ScanError::UpdateError(e) => write!(f, "Error updating item: {}", e),
-            ScanError::UpdateRenameError(e) => write!(f, "Error updating renamed item: {}", e),
+            ScanError::UpdateExistingError(e) => write!(f, "Error updating existing item: {}", e),
             ScanError::NewEntryError(e) => write!(f, "Error creating new entry: {}", e),
-            ScanError::DBError(e) => write!(f, "DB Error: {}", e),
         }
     }
 }

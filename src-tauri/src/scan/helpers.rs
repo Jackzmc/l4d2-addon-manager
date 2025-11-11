@@ -1,6 +1,6 @@
 // Can guarantee id is 4 digits at minimum.
 // IDs are sequential, L4D2 Workshop came out after the 10000th addon was released
-use l4d2_addon_parser::AddonInfo;
+use l4d2_addon_parser::{AddonContent, AddonInfo};
 use crate::store::AddonFlags;
 use std::path::PathBuf;
 use regex::Regex;
@@ -47,23 +47,24 @@ pub(super) fn find_workshop_id(path: &PathBuf, addon: &AddonInfo) -> Option<i64>
     None
 }
 
-pub(super) fn get_addon_flags(info: &AddonInfo) -> AddonFlags {
-    let mut flags = AddonFlags::empty();
-    if info.content.is_map {
-        flags |= AddonFlags::CAMPAIGN;
+impl Into<AddonFlags> for &AddonContent {
+    fn into(self) -> AddonFlags {
+        let mut flags = AddonFlags::empty();
+        if self.is_map {
+            flags |= AddonFlags::CAMPAIGN;
+        }
+        if self.is_survivor {
+            flags |= AddonFlags::SURVIVOR;
+        }
+        if self.is_script {
+            flags |= AddonFlags::SCRIPT;
+        }
+        if self.is_weapon {
+            flags |= AddonFlags::WEAPON;
+        }
+        if self.is_sound || self.is_music {
+            flags |= AddonFlags::SOUND;
+        }
+        flags
     }
-    if info.content.is_survivor {
-        flags |= AddonFlags::SURVIVOR;
-    }
-    if info.content.is_script {
-        flags |= AddonFlags::SCRIPT;
-    }
-    if info.content.is_weapon {
-        flags |= AddonFlags::WEAPON;
-    }
-    if info.content.is_sound || info.content.is_music {
-        flags |= AddonFlags::SOUND;
-    }
-    flags
 }
-

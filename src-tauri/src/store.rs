@@ -1,7 +1,5 @@
 use std::fmt::{Display, Formatter};
 use std::fs;
-use std::fs::Metadata;
-use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::sync::Arc;
 use bitflags::bitflags;
@@ -15,7 +13,7 @@ use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
 use tauri::async_runtime::Mutex;
-use crate::models::addon::{StandardAddonWithTags, PartialAddon, WorkshopEntry};
+use crate::models::addon::{StandardAddonWithTags, WorkshopEntry};
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 /// for standard addons
@@ -215,53 +213,16 @@ impl AddonStorage {
             .fetch_all(&self.pool).await
     }
 
-    pub async fn get_by_filename(&self, filename: &str) -> Result<Option<PartialAddon>, sqlx::Error> {
-        sqlx::query_as::<_, PartialAddon>(r#"
-                select
-                    addons.filename,
-                    addons.updated_at, addons.created_at,
-                    addons.file_size, addons.flags,
-                    addons.workshop_id,
-                    addons.file_hash,
-                    GROUP_CONCAT(tags.tag) tags
-                from addons
-                left join addon_tags tags on tags.hash = addons.file_hash
-                where addons.filename = ?
-                group by addons.filename
-            "#
-        )
-               .bind(filename)
-               .fetch_optional(&self.pool)
-               .await
-    }
-
-    pub async fn update_entry(&mut self, filename: &str, hash: FileHash, file_meta: Metadata, addon: &AddonInfo, scan_id: Option<u32>) -> Result<(), sqlx::Error> {
-        let last_modified: DateTime<Utc> = file_meta.modified().unwrap().into();
-        let size = file_meta.size() as i64;
-        sqlx::query!(
-            "UPDATE addons SET file_size = ?, file_hash = ?, updated_at = ?, title = ?, version = ?, scan_id = ? WHERE filename = ?",
-            size,
-            hash,
-            last_modified,
-            addon.title,
-            addon.version,
-            scan_id,
-            filename
-        )
-            .execute(&self.pool)
-            .await?;
-        Ok(())
-    }
-
 
     /// Update the entry by its hash. Returns boolean if an entry existed and had its filename & content changed, false if not
-    pub async fn update_entry_by_hash(&mut self, hash: &FileHash, new_filename: &str, title: &str, version: &str,  scan_id: Option<u32>) -> Result<bool, sqlx::Error> {
-        // TODO: where count(*) is 1? if possible? to prevent multiple entries with same title/version
+    pub async fn update_entry_by_hash(&mut self, hash: &FileHash, new_filename: &str, info: &AddonInfo, scan_id: Option<u32>) -> Result<bool, sqlx::Error> {
+        let flags: AddonFlags = (&info.content).into();
         let affected = sqlx::query!(
-            "UPDATE addons SET filename = ?, title = ?, version = ?, scan_id = ? WHERE file_hash = ?",
+            "UPDATE addons SET filename = ?, title = ?, version = ?, flags = ?, scan_id = ? WHERE file_hash = ?",
             new_filename,
-            title,
-            version,
+            info.title,
+            info.version,
+            flags.0,
             scan_id,
             hash
         )
