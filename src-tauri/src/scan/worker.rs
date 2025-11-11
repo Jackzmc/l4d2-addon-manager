@@ -105,7 +105,7 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer, scan_id: u32) -
         // Next time a scan is performed any changes will be reflected by the last modified check
         debug!("possible rename. checking for a possible entry. hash={} for file=\"{}\"", hash, filename);
         let mut addons = addons.lock().await;
-        if addons.update_entry_by_hash(&hash, filename, version, title, Some(scan_id)).await
+        if addons.update_entry_by_hash(&hash, filename, title, version, Some(scan_id)).await
             .map_err(|e| ScanError::UpdateRenameError(e))?
         {
             debug!("found renamed file: {}, hash: {}", filename, hash);

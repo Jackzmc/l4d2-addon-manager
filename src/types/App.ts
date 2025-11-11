@@ -54,3 +54,14 @@ export const ScanResultMessage: Record<ScanResultType, { title: string } | undef
         title: "Found Renamed Addon"
     }
 }
+
+export type ItemResult = ItemResult_Ok | ItemResult_Error
+export interface ItemResult_Ok {
+    result: "ok",
+    filename: string
+}
+export interface ItemResult_Error {
+    result: "error",
+    filename: string,
+    error: string
+}

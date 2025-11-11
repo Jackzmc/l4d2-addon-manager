@@ -243,7 +243,7 @@ impl AddonStorage {
 
 
     /// Update the entry by its hash. Returns boolean if an entry existed and had its filename & content changed, false if not
-    pub async fn update_entry_by_hash(&mut self, hash: &FileHash, title: &str, version: &str, new_filename: &str, scan_id: Option<u32>) -> Result<bool, sqlx::Error> {
+    pub async fn update_entry_by_hash(&mut self, hash: &FileHash, new_filename: &str, title: &str, version: &str,  scan_id: Option<u32>) -> Result<bool, sqlx::Error> {
         // TODO: where count(*) is 1? if possible? to prevent multiple entries with same title/version
         let affected = sqlx::query!(
             "UPDATE addons SET filename = ?, title = ?, version = ?, scan_id = ? WHERE file_hash = ?",

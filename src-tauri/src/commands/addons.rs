@@ -47,9 +47,19 @@ pub async fn addons_abort_scan(scanner: State<'_, ScannerContainer>, reason: Opt
 }
 
 #[derive(Serialize, Clone)]
+#[serde(tag = "result")]
+#[serde(rename_all = "lowercase")]
 pub enum ItemResult {
-    Ok(String),
-    Error(String, String)
+    Ok { filename: String },
+    Error { filename: String, error: String },
+}
+impl ItemResult {
+    pub fn ok(filename: String) -> Self {
+        ItemResult::Ok { filename }
+    }
+    pub fn error(filename: String, error: String) -> Self {
+        ItemResult::Error { filename, error }
+    }
 }
 
 #[tauri::command]
@@ -70,23 +80,23 @@ pub async fn addons_migrate(cfg: State<'_, AppConfigContainer>, ids: Vec<i64>) -
                 let src = workshop_folder.join(&filename);
                 let dest = addons_folder.join(&filename);
                 if let Err(e) = std::fs::copy(src, dest) {
-                    return ItemResult::Error(filename, e.to_string());
+                    return ItemResult::error(filename, e.to_string());
                 }
                 if can_unsubscribe {
                     if let Err(e) = steam.unsubscribe(&id.to_string()) {
-                        return ItemResult::Error(filename, e.to_string());
+                        return ItemResult::error(filename, e.to_string());
                     }
                     // Sleep in between requests so we don't hit steam api key
                     // with a ton (ids.len()) amount of requests at once
                     std::thread::sleep(Duration::from_millis(500 * i));
                 }
                 i += 1;
-                ItemResult::Ok(filename)
+                ItemResult::ok(filename)
             })
             .inspect(|result| {
                 match result {
-                    ItemResult::Ok(filename) => info!("Migrate {}: OK", filename),
-                    ItemResult::Error(filename, err) => error!("Migrate {}: {}", filename, err)
+                    ItemResult::Ok { filename } => info!("Migrate {}: OK", filename),
+                    ItemResult::Error { filename, error } => error!("Migrate {}: {}", filename, error)
                 }
             })
             .collect();
@@ -108,13 +118,13 @@ pub async fn addons_unsubscribe(ids: Vec<i64>, cfg: State<'_, AppConfigContainer
         Ok(ids.into_iter().map(|id| {
             let id = id.to_string();
             if let Err(e) = steam.unsubscribe(&id) {
-                return ItemResult::Error(id, e.to_string());
+                return ItemResult::error(id, e.to_string());
             }
             // Sleep in between requests so we don't hit steam api key
             // with a ton (ids.len()) amount of requests at once
             std::thread::sleep(Duration::from_millis(500 * i));
             i += 1;
-            ItemResult::Ok(id)
+            ItemResult::ok(id)
         })
             .collect())
     }).await
@@ -148,8 +158,8 @@ pub async fn addons_delete(cfg: State<'_, AppConfigContainer>, filenames: Vec<St
         .map(|filename| {
             let path = addons_folder.join(&filename);
             match trash::delete(&path){
-                Ok(_) => ItemResult::Ok(filename),
-                Err(e) => ItemResult::Error(filename, e.to_string())
+                Ok(_) => ItemResult::ok(filename),
+                Err(e) => ItemResult::error(filename, e.to_string())
             }
         })
         .collect()

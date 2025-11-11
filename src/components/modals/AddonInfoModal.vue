@@ -30,10 +30,12 @@ const props = defineProps<{
 }>()
 
 async function onSetState(state: boolean) {
-    setAddonState([props.entry.addon.filename], state)
+    console.debug("ststate", [props.entry.addon.filename])
+    await setAddonState([props.entry.addon.filename], state)
 }
 
 async function onDeletePressed() {
+    console.debug("delete", [props.entry.addon.filename])
     await deleteAddons([props.entry.addon.filename])
 }
 

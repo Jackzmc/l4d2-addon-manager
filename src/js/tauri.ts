@@ -1,7 +1,8 @@
 import { invoke, InvokeArgs, InvokeOptions } from '@tauri-apps/api/core'
 import { AddonEntry } from '../types/Addon.ts';
 import { notify } from '@kyvg/vue3-notification';
-import { AddonCounts, AppConfig, InitAppData } from '../types/App.ts';
+import { AddonCounts, AppConfig, InitAppData, ItemResult } from '../types/App.ts';
+import { handleItemResults } from './app.ts';
 
 async function tryInvoke<T>(cmd: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
     try {
@@ -62,12 +63,44 @@ export async function unsubscribeAddons(ids: number[]): Promise<void> {
     return await tryInvoke("addons_unsubscribe", { ids })
 }
 
-export async function setAddonState(filenames: string[], state: boolean): Promise<void> {
-    return await tryInvoke("addons_set_state", { filenames, state })
+export async function setAddonState(filenames: string[], state: boolean): Promise<ItemResult[]> {
+    const results: ItemResult[] = await tryInvoke("addons_set_state", { filenames, state })
+    const errors = handleItemResults(results)
+    const stateText = state ? "enabled" : "disabled"
+    if(errors === 0) {
+        notify({
+            type: "success",
+            title: `Addons ${stateText} successfully`,
+            text: `${results.length} addons have been ${stateText}`
+        })
+    } else {
+        notify({
+            type: errors === results.length ? "error" : "warn",
+            title: "Addons had errors",
+            text: `${errors} / ${results.length} addons failed to be ${stateText}. See logs for info`
+        })
+    }
+    return results
+    return results
 }
 
-export async function deleteAddons(filenames: string[]): Promise<void> {
-    return await tryInvoke("addons_delete", { filenames })
+export async function deleteAddons(filenames: string[]): Promise<ItemResult[]> {
+    const results: ItemResult[] = await tryInvoke("addons_delete", { filenames })
+    const errors = handleItemResults(results)
+    if(errors === 0) {
+        notify({
+            type: "success",
+            title: "Deletion successful",
+            text: `${results.length} addons have been moved to trash`
+        })
+    } else {
+        notify({
+            type: errors === results.length ? "error" : "warn",
+            title: "Deletion had errors",
+            text: `${errors} / ${results.length} addons failed to be deleted. See logs for info`
+        })
+    }
+    return results
 }
 export async function exportApp(withAddons: boolean): Promise<void> {
     return await tryInvoke("export", { withAddons })
