@@ -1,10 +1,10 @@
+use crate::modules::cfg::AppConfigContainer;
+use l4d2_addon_parser::addon_list::AddonList;
+use log::{warn};
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 use std::fs::Metadata;
-use l4d2_addon_parser::addon_list::AddonList;
-use log::{error, warn};
-use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
-use crate::modules::cfg::AppConfigContainer;
 
 #[derive(Debug, Serialize)]
 pub struct SetRoute {

@@ -259,6 +259,7 @@ impl AddonStorage {
 
     /// Attempts to add workshop items to db, overwriting existing if found
     pub async fn add_workshop_items(&self, items: Vec<WorkshopItem>) -> Result<(), sqlx::Error> {
+        if items.is_empty() { return Ok(()) }
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
             "INSERT OR REPLACE INTO workshop_items (publishedfileid, title, time_created, time_updated, file_size, description, file_url, creator_id, tags) "
         );

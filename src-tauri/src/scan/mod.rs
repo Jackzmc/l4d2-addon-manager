@@ -1,29 +1,28 @@
-use crate::scan::thread::scan_main_thread;
 use std::sync::atomic::Ordering;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::AppHandle;
 use crate::modules::store::AddonStorageContainer;
 use std::sync::atomic::AtomicBool;
-use crate::scan::worker::ScanError;
+use crate::scan::worker::ProcessError;
 use std::fmt::Display;
 use serde::Serialize;
 use log::info;
 use log::debug;
 use std::sync::Arc;
-use std::sync::atomic::AtomicU32;
 use tauri::Emitter;
+use crate::scan::thread::scan_main;
 
 mod helpers;
 mod thread;
 mod worker;
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 struct ScanCounter {
-    total: Arc<AtomicU32>,
-    added: Arc<AtomicU32>,
-    updated: Arc<AtomicU32>,
-    errors: Arc<AtomicU32>
+    total: u32,
+    added: u32,
+    updated: u32,
+    errors: u32
 }
 
 #[derive(Serialize, Clone)]
@@ -42,21 +41,19 @@ pub enum ScanState {
     }
 }
 
-impl Display for ScanError {
+impl Display for ProcessError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ScanError::FileError(e) => write!(f, "IO Error: {}", e),
-            ScanError::ParseError(e) => write!(f, "Parse Error: {}", e),
-            ScanError::UpdateExistingError(e) => write!(f, "Error updating existing item: {}", e),
-            ScanError::NewEntryError(e) => write!(f, "Error creating new entry: {}", e),
+            ProcessError::FileError(e) => write!(f, "IO Error: {}", e),
+            ProcessError::UpdateExistingError(e) => write!(f, "Error updating existing item: {}", e),
+            ProcessError::NewEntryError(e) => write!(f, "Error creating new entry: {}", e),
         }
     }
 }
 
 pub struct AddonScanner {
-    scan_thread: Option<std::thread::JoinHandle<()>>,
+    scan_main_task: Option<tokio::task::JoinHandle<()>>,
     running_signal: Arc<AtomicBool>,
-
     addons: AddonStorageContainer,
     app: AppHandle
 }
@@ -65,7 +62,7 @@ pub type ScannerContainer = Mutex<AddonScanner>;
 impl AddonScanner {
     pub fn new(addons: AddonStorageContainer, app: AppHandle) -> Self {
         Self {
-            scan_thread: None,
+            scan_main_task: None,
             running_signal: Arc::new(AtomicBool::new(false)),
             addons,
             app
@@ -84,9 +81,7 @@ impl AddonScanner {
         let app = self.app.clone();
         let running_signal = self.running_signal.clone();
         self.running_signal.store(true, Ordering::SeqCst);
-
-        self.scan_thread = Some(std::thread::Builder::new().name("scan_main_thread".to_string())
-            .spawn( || scan_main_thread(path, running_signal, addons, app)).unwrap());
+        self.scan_main_task = Some(tokio::spawn(scan_main(path, running_signal, addons, app)));
         true
     }
     pub fn abort(&mut self, reason: Option<String>) {
@@ -95,7 +90,10 @@ impl AddonScanner {
         // this tells thread to abort, but reusing the same signal does
         self.running_signal.store(false, Ordering::SeqCst);
         // wait for thread to end
-        self.scan_thread.take().unwrap().join().unwrap();
+        let main_task = self.scan_main_task.take().unwrap();
+        while !main_task.is_finished() {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        }
         info!("Scan aborted");
         self.app.emit("scan_state", ScanState::Aborted {
             reason
@@ -109,11 +107,11 @@ impl AddonScanner {
 
     /// Checks if we still have a thread handle, checks if thread finished, and removes ref
     fn _check_thread_complete(&mut self) -> bool {
-        if let Some(thread) = self.scan_thread.as_ref() {
+        if let Some(thread) = self.scan_main_task.as_ref() {
             debug!("thread still exists, check");
             if thread.is_finished() {
                 debug!("its finished, removing it");
-                self.scan_thread.take();
+                self.scan_main_task.take();
                 return false
             }
             return true
