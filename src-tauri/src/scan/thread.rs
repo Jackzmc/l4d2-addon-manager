@@ -90,15 +90,8 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
             addons.list_workshop_ids().await.unwrap_or_default()
         };
 
-        // Resolve workshop folder
-        {
-            // Extract all workshop ids from workshop addons folder
-            let mut workshop_folder_ws_ids: Vec<i64> = get_workshop_folder_ws_ids(&path).into_iter().filter(|id| !existing_ws_ids.contains(id)).collect();
-            // If there is any workshop ids in the workshop folder, fetch them
-            if workshop_folder_ws_ids.len() > 0 {
-                drain_workshop_addons(&mut workshop_folder_ws_ids, &handle, &ws, addons.clone(), "workshop".to_string(), scan_id).await;
-            }
-        }
+        resolve_workshop_folder(&path, &addons, &ws, &handle, existing_ws_ids).await;
+
         // Addons from the normal addons folder, their workshop ids get added to this queue
         let mut addons_folder_ws_ids: Vec<i64> = Vec::new();
 
@@ -110,7 +103,7 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
                     addons_folder_ws_ids.push(workshop_id);
                     // If we got >= 100 workshop ids, while we are still processing, go ahead and fetch them
                     if addons_folder_ws_ids.len() >= 100 {
-                        drain_workshop_addons(&mut addons_folder_ws_ids, &handle, &ws, addons.clone(), "addons".to_string(), scan_id).await;
+                        drain_workshop_addons(&mut addons_folder_ws_ids, &handle, &ws, addons.clone()).await;
                     }
                 },
                 _ => {}
@@ -125,7 +118,7 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
         }
         debug!("all addon scan tasks complete");
         // All tasks complete, resolve any remaining workshop ids
-        drain_workshop_addons(&mut addons_folder_ws_ids, &handle, &ws, addons.clone(), "addons".to_string(), scan_id).await;
+        drain_workshop_addons(&mut addons_folder_ws_ids, &handle, &ws, addons.clone()).await;
 
         // Mark all filenames and workshop srcs as null if we did not update / add them in this scan
         let addons = addons.lock().await;
@@ -154,19 +147,34 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     running_signal.store(true, Ordering::SeqCst); // signal that scan over
 }
 
+async fn resolve_workshop_folder(path: &PathBuf, addons: &AddonStorageContainer, ws: &Arc<SteamWorkshop>, handle: &Handle, existing_ws_ids: Vec<i64>) {
+    // Extract all workshop ids from workshop addons folder
+    // Fetch any items that we don't already have
+    let mut workshop_folder_ws_ids: Vec<i64> = get_workshop_folder_ws_ids(&path).into_iter().filter(|id| !existing_ws_ids.contains(id)).collect();
+    let workshop_ids_clone = workshop_folder_ws_ids.clone();
+    // If there is any workshop ids in the workshop folder, fetch them
+    drain_workshop_addons(&mut workshop_folder_ws_ids, &handle, &ws, addons.clone()).await;
+
+    // Then mark all the items in workshop folder as workshop items
+    let addons = addons.lock().await;
+    if let Err(e) = addons.mark_workshop_ids(workshop_ids_clone).await {
+        error!("failed to mark workshop ids: {}", e);
+    }
+}
+
 /// Drains list of workshop ids and fetches them in batches of 100.
 /// Runs on runtime blocking threads as it's sync HTTP
-async fn drain_workshop_addons(addon_ids: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>, addons: AddonStorageContainer, src: String, scan_id: u32) {
+async fn drain_workshop_addons(addon_ids: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>, addons: AddonStorageContainer) {
     while !addon_ids.is_empty() {
-        fetch_workshop_addons(addon_ids, rt, ws, addons.clone(), src.clone(), scan_id.clone()).await;
+        fetch_workshop_addons(addon_ids, rt, ws, addons.clone()).await;
     }
 }
 
 /// takes upto 100 ids from list and fetches items and pushes to db
-async fn fetch_workshop_addons(addon_ids: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>, addons: AddonStorageContainer, src: String, scan_id: u32) {
+async fn fetch_workshop_addons(addon_ids: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>, addons: AddonStorageContainer) {
     // Steam API only supports upto 100 at a time
     let items_to_drain = 100.min(addon_ids.len()); // drain panics if over len, get smallest
-    trace!("fetching slice of {items_to_drain} ids, src={src}");
+    trace!("fetching slice of {items_to_drain} ids");
     let slice: Vec<String> = addon_ids.drain(0..items_to_drain).map(|item| item.to_string()).collect();
     let ws = ws.clone();
     let slice_len = slice.len();
@@ -174,8 +182,8 @@ async fn fetch_workshop_addons(addon_ids: &mut Vec<i64>, rt: &Handle, ws: &Arc<S
         Ok(items) => {
             if items.len() == 0 { return; } // skip if we have nothing
             let addons = addons.lock().await;
-            debug!("fetched {} ids, got {} workshop items for src={}", slice_len, items.len(), src);
-            if let Err(err) = addons.add_workshop_items(items, src, Some(scan_id)).await {
+            debug!("fetched {} ids, got {} workshop items", slice_len, items.len());
+            if let Err(err) = addons.add_workshop_items(items).await {
                 error!("failed to add workshop items: {}", err);
             }
         },

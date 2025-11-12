@@ -40,7 +40,7 @@ label.checkbox.large {
 }
 .v-enter-active,
 .v-leave-active {
-  transition: opacity 0.4s ease;
+  transition: opacity 0.2s;
 }
 
 .v-enter-from,

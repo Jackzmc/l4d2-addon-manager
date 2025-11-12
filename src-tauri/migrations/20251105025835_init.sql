@@ -14,7 +14,7 @@ create table addons
     version text,
     tagline text,
     chapter_ids text, -- comma separated list of coop chapter ids, if set
-    flags integer not null default 0, -- Bit field
+    flags integer not null default 0, -- Bit field for AddonFlags
 
     -- misc
     workshop_id integer, -- extracted from addoninfo.txt or filename
@@ -43,7 +43,7 @@ create table workshop_items
     creator_id      text    not null,
     tags            text    not null, -- comma separate list
 
-    src             text    not null, -- "workshop" folder or "addons" folder
+    flags           integer not null default 0, -- Bit field for AddonFlags
     scan_id         integer null, -- for detecting missing files
 
     primary key(publishedfileid)

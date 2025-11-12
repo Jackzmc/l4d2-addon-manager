@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { UnlistenFn } from '@tauri-apps/api/event';
-import { attachLogger, LogLevel } from '@tauri-apps/plugin-log';
+import { attachLogger } from '@tauri-apps/plugin-log';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { getLogs } from '../js/tauri.ts';
 import { LogEntry } from '../types/App.ts';
