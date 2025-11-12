@@ -1,6 +1,6 @@
-use crate::cfg::AppConfigContainer;
-use crate::cfg::{AppConfig, StaticData};
-use crate::store::AddonStorageContainer;
+use crate::modules::cfg::AppConfigContainer;
+use crate::modules::cfg::{AppConfig, StaticData};
+use crate::modules::store::AddonStorageContainer;
 use crate::util::SetRoute;
 use log::{debug, info};
 use serde::Serialize;

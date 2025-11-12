@@ -1,7 +1,7 @@
 // Can guarantee id is 4 digits at minimum.
 // IDs are sequential, L4D2 Workshop came out after the 10000th addon was released
 use l4d2_addon_parser::{AddonContent, AddonInfo};
-use crate::store::AddonFlags;
+use crate::modules::store::AddonFlags;
 use std::path::PathBuf;
 use regex::Regex;
 use std::sync::LazyLock;

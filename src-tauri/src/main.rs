@@ -2,13 +2,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 pub mod commands;
-pub mod cfg;
 pub mod util;
 
-mod store;
 mod models;
 
 mod scan;
+pub mod modules;
 
 fn main() {
     l4d2_addon_manager_lib::run()

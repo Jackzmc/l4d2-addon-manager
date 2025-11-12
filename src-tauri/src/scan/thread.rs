@@ -3,7 +3,7 @@ use crate::scan::worker::scan_file_wrapper;
 use crate::scan::worker::WorkerOutput;
 use crate::scan::ScanCounter;
 use crate::scan::ScanState;
-use crate::store::AddonStorageContainer;
+use crate::modules::store::AddonStorageContainer;
 use log::debug;
 use log::error;
 use log::info;

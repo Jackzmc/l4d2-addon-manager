@@ -1,11 +1,11 @@
 use l4d2_addon_parser::L4D2Addon;
 use l4d2_addon_parser::AddonInfo;
 use crate::scan::helpers::find_workshop_id;
-use crate::store::{AddonData, AddonFlags, FileHash};
+use crate::modules::store::{AddonData, AddonFlags, FileHash};
 use std::sync::atomic::Ordering;
 use crate::scan::ScanCounter;
 use std::sync::Arc;
-use crate::store::AddonStorageContainer;
+use crate::modules::store::AddonStorageContainer;
 use std::path::PathBuf;
 use log::{error, trace};
 use log::debug;

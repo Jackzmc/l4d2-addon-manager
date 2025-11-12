@@ -1,4 +1,4 @@
-use crate::cfg::{AppConfig, AppConfigContainer};
+use crate::modules::cfg::{AppConfig, AppConfigContainer};
 use log::{debug, info};
 use std::env::home_dir;
 use std::path::PathBuf;

@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::AppHandle;
-use crate::store::AddonStorageContainer;
+use crate::modules::store::AddonStorageContainer;
 use std::sync::atomic::AtomicBool;
 use crate::scan::worker::ScanError;
 use std::fmt::Display;

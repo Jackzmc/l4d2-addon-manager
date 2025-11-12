@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use crate::store::{AddonData, FileHash};
+use crate::modules::store::{AddonData, FileHash};
 
 #[derive(Debug, FromRow)]
 pub struct StandardAddonWithTags {

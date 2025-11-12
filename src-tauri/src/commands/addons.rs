@@ -4,8 +4,8 @@ use log::{debug, error, info};
 use serde::Serialize;
 use sqlx::__rt::spawn_blocking;
 use tauri::State;
-use crate::store::{AddonEntry, AddonStorageContainer};
-use crate::cfg::AppConfigContainer;
+use crate::modules::store::{AddonEntry, AddonStorageContainer};
+use crate::modules::cfg::AppConfigContainer;
 use crate::scan::ScannerContainer;
 use crate::util::get_addon_list;
 

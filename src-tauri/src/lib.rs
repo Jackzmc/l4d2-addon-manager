@@ -8,15 +8,16 @@ use std::sync::{Arc};
 use tauri::async_runtime::Mutex;
 use tauri::{Manager, RunEvent};
 use tauri_plugin_log::{RotationStrategy, TargetKind, WEBVIEW_TARGET};
-use crate::store::{AddonStorage, AddonStorageContainer};
+use crate::modules::store::{AddonStorage, AddonStorageContainer};
 use crate::scan::AddonScanner;
+use crate::modules::cfg;
 
-pub mod cfg;
 mod commands;
 pub mod util;
-mod store;
 mod models;
 mod scan;
+mod modules;
+
 fn log_level() -> LevelFilter {
     let level = LevelFilter::from_str(option_env!("APP_LOG_LEVEL")
         .unwrap_or("trace")).expect("invalid log level");

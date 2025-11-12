@@ -2,7 +2,7 @@ use l4d2_addon_parser::addon_list::AddonList;
 use log::error;
 use serde::Serialize;
 use tauri::State;
-use crate::cfg::AppConfigContainer;
+use crate::modules::cfg::AppConfigContainer;
 
 #[derive(Debug, Serialize)]
 pub struct SetRoute {
