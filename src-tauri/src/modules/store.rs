@@ -291,6 +291,7 @@ impl AddonStorage {
     }
 
     pub async fn mark_workshop_ids(&self, ids: Vec<i64>) -> Result<(), sqlx::Error> {
+        if ids.is_empty() { return Ok(()) }
         let mut tx = self.pool.begin().await?;
         // Drop AddonFlags::WORKSHOP for all items
         sqlx::query!("UPDATE workshop_items SET flags=flags&~1 WHERE flags & 1")
