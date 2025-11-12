@@ -4,6 +4,7 @@ use std::env::home_dir;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::{DialogExt};
+use crate::scan::{ScanSpeed, ScannerContainer};
 
 #[tauri::command]
 pub async fn choose_game_folder(app: tauri::AppHandle) -> Result<PathBuf, String> {
@@ -49,10 +50,19 @@ pub async fn choose_game_folder(app: tauri::AppHandle) -> Result<PathBuf, String
 pub async fn set_game_folder(
     cfg: State<'_, AppConfigContainer>,
     path: String,
+    scanner: State<'_, ScannerContainer>
 ) -> Result<(), String> {
     debug!("setting addons folder to {}", path);
     let mut cfg = cfg.lock().await;
-    cfg.addons_folder = Some(PathBuf::from(path));
+    let is_first_time = cfg.addons_folder.is_none();
+    let path = PathBuf::from(path);
+    cfg.addons_folder = Some(path.clone());
+    // Start a scan at full speed if this is the first time
+    if is_first_time {
+        info!("First time setup, starting maximum scan");
+        let mut scanner = scanner.lock().unwrap();
+        scanner.start(path, ScanSpeed::Maximum);
+    }
     cfg.save();
     Ok(())
 }
