@@ -72,3 +72,9 @@ export interface LogEntry {
     message: string, 
     level: LogLevel
 }
+
+export const enum ScanSpeed {
+    Maximum,
+    Normal = 1,
+    Background = 2
+} 

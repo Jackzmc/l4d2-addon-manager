@@ -6,7 +6,7 @@ use sqlx::__rt::spawn_blocking;
 use tauri::State;
 use crate::modules::store::{AddonEntry, AddonStorageContainer};
 use crate::modules::cfg::AppConfigContainer;
-use crate::scan::ScannerContainer;
+use crate::scan::{ScanSpeed, ScannerContainer};
 use crate::util::get_addon_list;
 
 #[tauri::command]
@@ -30,13 +30,13 @@ pub async fn addons_list_workshop(addons: State<'_, AddonStorageContainer>, cfg:
 }
 
 #[tauri::command]
-pub async fn addons_start_scan(cfg: State<'_, AppConfigContainer>, scanner: State<'_, ScannerContainer>) -> Result<(), String> {
+pub async fn addons_start_scan(cfg: State<'_, AppConfigContainer>, scanner: State<'_, ScannerContainer>, speed: Option<ScanSpeed>) -> Result<(), String> {
     let addons_folder = {
         let cfg = cfg.lock().await;
         cfg.addons_folder.clone().ok_or_else(|| "no addon folder configured".to_string())?
     };
     let mut scanner = scanner.lock().unwrap();
-    match scanner.start(addons_folder) {
+    match scanner.start(addons_folder, speed.unwrap_or_default()) {
         true => Ok(()),
         false => Err("A scan is already in progress".to_string())
     }

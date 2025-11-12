@@ -5,7 +5,7 @@ use crate::modules::store::AddonFlags;
 use std::path::PathBuf;
 use regex::Regex;
 use std::sync::LazyLock;
-use log::info;
+use log::{info, warn};
 
 static WORKSHOP_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"https://steamcommunity.com/sharedfiles/filedetails/\?id=(\d+)").unwrap());
 static WORKSHOP_FILE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\d{4,}").unwrap());
@@ -66,5 +66,20 @@ impl Into<AddonFlags> for &AddonContent {
             flags |= AddonFlags::SOUND;
         }
         flags
+    }
+}
+
+pub(super) fn get_workshop_folder_ws_ids(path: &PathBuf) -> Vec<i64> {
+    match get_vpks_in_dir(&path.join("workshop")) {
+        Ok(list) => list.into_iter()
+            .map(|item| item.file_stem().unwrap().to_string_lossy().parse::<i64>())
+            // Remove any files that don't have a valid ID:
+            .filter(|item| item.is_ok())
+            .map(|item| item.unwrap())
+            .collect(),
+        Err(e) => {
+            warn!("failed to scan workshop dir: {}", e);
+            Vec::new()
+        }
     }
 }

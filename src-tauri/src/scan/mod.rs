@@ -6,12 +6,12 @@ use crate::modules::store::AddonStorageContainer;
 use std::sync::atomic::AtomicBool;
 use crate::scan::worker::ProcessError;
 use std::fmt::Display;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use log::info;
 use log::debug;
 use std::sync::Arc;
 use tauri::Emitter;
-use crate::scan::thread::scan_main;
+use crate::scan::thread::{scan_main};
 
 mod helpers;
 mod thread;
@@ -58,6 +58,44 @@ pub struct AddonScanner {
     app: AppHandle
 }
 
+#[derive(Deserialize, Clone)]
+pub enum ScanSpeed {
+    /// Uses all threads
+    Maximum = 0,
+    /// Uses half of threads
+    Normal = 1,
+    /// Uses one thread
+    Background = 2
+}
+
+impl Display for ScanSpeed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let threads = self.threads();
+        match self {
+            ScanSpeed::Maximum => write!(f, "Maximum ({} threads)", threads),
+            ScanSpeed::Normal => write!(f, "Normal ({} threads)", threads),
+            ScanSpeed::Background => write!(f, "Background ({} threads)", threads)
+        }
+    }
+}
+
+impl Default for ScanSpeed {
+    fn default() -> Self {
+        ScanSpeed::Normal
+    }
+}
+
+impl ScanSpeed {
+    /// Returns number of threads to use based on scan speed setting
+    pub fn threads(&self) -> u8 {
+        match self {
+            ScanSpeed::Maximum => num_cpus::get() as u8,
+            ScanSpeed::Normal => (num_cpus::get() as f32 / 2.0).ceil() as u8,
+            ScanSpeed::Background => 1
+        }
+    }
+}
+
 pub type ScannerContainer = Mutex<AddonScanner>;
 impl AddonScanner {
     pub fn new(addons: AddonStorageContainer, app: AppHandle) -> Self {
@@ -74,14 +112,14 @@ impl AddonScanner {
     /// All addons/*.vpk have a task spawned in (NUM_WORKER_THREADS) task threads
     /// When worker tasks complete, any workshop ids to fetch items are sent, and resolved once we have over 100
     /// When all worker tasks done, any remaining workshop items are fetched in batches of 100
-    pub fn start(&mut self, path: PathBuf) -> bool {
+    pub fn start(&mut self, path: PathBuf, speed: ScanSpeed) -> bool {
         if self.check_running() { return false; } // ignore if not running
 
         let addons = self.addons.clone();
         let app = self.app.clone();
         let running_signal = self.running_signal.clone();
         self.running_signal.store(true, Ordering::SeqCst);
-        self.scan_main_task = Some(tokio::spawn(scan_main(path, running_signal, addons, app)));
+        self.scan_main_task = Some(tokio::spawn(scan_main(path, speed, running_signal, addons, app)));
         true
     }
     pub fn abort(&mut self, reason: Option<String>) {

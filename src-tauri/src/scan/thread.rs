@@ -1,7 +1,7 @@
 use crate::modules::store::AddonStorageContainer;
-use crate::scan::helpers::get_vpks_in_dir;
+use crate::scan::helpers::{get_vpks_in_dir, get_workshop_folder_ws_ids};
 use crate::scan::worker::{async_process_file, scan_worker_thread, scan_workshop_thread, AddonFileData, ProcessResult, WorkerTask};
-use crate::scan::ScanCounter;
+use crate::scan::{ScanCounter, ScanSpeed};
 use crate::scan::ScanState;
 use log::error;
 use log::info;
@@ -17,32 +17,14 @@ use std::time::Instant;
 use tauri::AppHandle;
 use tauri::Emitter;
 
-/// Number of worker threads to spawn. Worker threads hash each addon.
-/// More threads do not seem to change the speed at all
-pub(crate) const NUM_WORKER_THREADS: usize = 3;
-
-fn get_workshop_folder_ws_ids(path: &PathBuf) -> Vec<i64> {
-    match get_vpks_in_dir(&path.join("workshop")) {
-        Ok(list) => list.into_iter()
-            .map(|item| item.file_stem().unwrap().to_string_lossy().parse::<i64>())
-            // Remove any files that don't have a valid ID:
-            .filter(|item| item.is_ok())
-            .map(|item| item.unwrap())
-            .collect(),
-        Err(e) => {
-            warn!("failed to scan workshop dir: {}", e);
-            Vec::new()
-        }
-    }
-}
-
 /// Main thread that starts and manages thread
-pub(super) async fn scan_main(path: PathBuf, running_signal: Arc<AtomicBool>, addons: AddonStorageContainer, app: AppHandle) {
+pub(super) async fn scan_main(path: PathBuf, speed: ScanSpeed, running_signal: Arc<AtomicBool>, addons: AddonStorageContainer, app: AppHandle) {
+    let threads = speed.threads();
     let mut counter = ScanCounter::default();
     app.emit("scan_state", ScanState::Started).ok();
     let scan_id: u32 = random();
     info!("===== SCAN STARTED =====");
-    info!("workers={} scan_id={}", NUM_WORKER_THREADS, scan_id);
+    info!("speed={} scan_id={}", speed, scan_id);
     info!("========================");
     let now = Instant::now();
 
@@ -57,10 +39,10 @@ pub(super) async fn scan_main(path: PathBuf, running_signal: Arc<AtomicBool>, ad
     debug!("scan_main: got {} files to scan", scan_tasks.len());
     // queue being empty signals threads to end
     let queue = Arc::new(tokio::sync::Mutex::new(VecDeque::<WorkerTask>::from(scan_tasks)));
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AddonFileData, String>>(NUM_WORKER_THREADS);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AddonFileData, String>>(12);
 
-    debug!("starting {} worker threads", NUM_WORKER_THREADS);
-    for i in 0..NUM_WORKER_THREADS {
+    debug!("starting {} worker threads", threads);
+    for i in 0..threads {
         let tx = tx.clone();
         let queue = queue.clone();
         std::thread::Builder::new()
