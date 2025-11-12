@@ -123,9 +123,9 @@ pub(super) async fn scan_main(path: PathBuf, running_signal: Arc<AtomicBool>, ad
     let workshop_items = std::thread::spawn(|| scan_workshop_thread(workshop_ids)).join().expect("workshop thread panicked");
 
     let addons = addons.lock().await;
-    debug!("adding workshop items");
+    debug!("adding {} workshop items", workshop_items.len());
     addons.add_workshop_items(workshop_items).await.expect("failed to add workshop items");
-    debug!("marking workshop ids");
+    debug!("marking {} workshop ids", workshop_folder_ids.len());
     addons.mark_workshop_ids(workshop_folder_ids).await.expect("failed to mark workshop ids"); // this should be after add_workshop_items, need items to exist first
     debug!("marking any missing files");
     addons.scan_mark_missing(scan_id).await.expect("failed to mark missing files");
