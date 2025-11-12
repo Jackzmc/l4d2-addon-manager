@@ -44,7 +44,6 @@ create table workshop_items
     tags            text    not null, -- comma separate list
 
     flags           integer not null default 0, -- Bit field for AddonFlags
-    scan_id         integer null, -- for detecting missing files
 
     primary key(publishedfileid)
 );
