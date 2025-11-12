@@ -16,7 +16,10 @@ use std::sync::Arc;
 use std::time::Instant;
 use tauri::AppHandle;
 use tauri::Emitter;
-pub(crate) const NUM_WORKER_THREADS: usize = 6;
+
+/// Number of worker threads to spawn. Worker threads hash each addon.
+/// More threads do not seem to change the speed at all
+pub(crate) const NUM_WORKER_THREADS: usize = 3;
 
 fn get_workshop_folder_ws_ids(path: &PathBuf) -> Vec<i64> {
     match get_vpks_in_dir(&path.join("workshop")) {
