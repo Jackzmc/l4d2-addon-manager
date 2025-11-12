@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::fs::Metadata;
 use l4d2_addon_parser::addon_list::AddonList;
 use log::error;
 use serde::Serialize;
@@ -54,4 +55,16 @@ impl Notification {
     pub fn send(self, app: AppHandle) {
         app.emit("notify", self).expect("failed to send notification");
     }
+}
+
+#[cfg(unix)]
+use std::os::unix::fs::MetadataExt;
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt;
+
+pub fn get_file_size(meta: &Metadata) -> i64 {
+    #[cfg(unix)]
+    return meta.size() as i64;
+    #[cfg(windows)]
+    return meta.file_size() as i64;
 }

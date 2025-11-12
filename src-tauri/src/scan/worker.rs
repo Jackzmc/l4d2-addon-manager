@@ -9,8 +9,8 @@ use crate::modules::store::AddonStorageContainer;
 use std::path::PathBuf;
 use log::{error, trace};
 use log::debug;
-use std::os::unix::fs::MetadataExt;
 use sqlx::__rt::spawn_blocking;
+use crate::util::get_file_size;
 
 pub(super) enum WorkerOutput {
     /// Worker has new workshop id to enqueue
@@ -87,7 +87,10 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer, scan_id: u32) -
         filename: filename.to_string(),
         updated_at: meta.modified().map_err(|e| ScanError::FileError(e))?.into(),
         created_at: meta.created().map_err(|e| ScanError::FileError(e))?.into(),
-        file_size: meta.size() as i64,
+        #[cfg(unix)]
+        file_size: get_file_size(&meta),
+        #[cfg(windows)]
+        file_size: meta.file_size() as i64,
         flags: flags,
         title: info.title.unwrap(), // TODO: if no info/info.title, use filename?
         author: info.author,
