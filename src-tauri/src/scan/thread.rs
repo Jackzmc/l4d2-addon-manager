@@ -4,7 +4,7 @@ use crate::scan::worker::WorkerOutput;
 use crate::scan::ScanCounter;
 use crate::scan::ScanState;
 use crate::modules::store::AddonStorageContainer;
-use log::debug;
+use log::{debug, warn};
 use log::error;
 use log::info;
 use log::trace;
@@ -32,7 +32,7 @@ fn get_workshop_folder_ws_ids(path: &PathBuf) -> Vec<i64> {
             .map(|item| item.unwrap())
             .collect(),
         Err(e) => {
-            error!("failed to scan workshop dir: {}", e);
+            warn!("failed to scan workshop dir: {}", e);
             Vec::new()
         }
     }
@@ -84,7 +84,6 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     let ws = Arc::new(SteamWorkshop::new());
     let task_running_signal = running_signal.clone();
     let handle = rt.handle().clone();
-
     // Spawn a task to await all the other worker tasks
     rt.spawn(async move {
         // Remove any workshop ids from workshop/ folder that we already got:
@@ -98,8 +97,8 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
 
         // Addons from the normal addons folder, their workshop ids get added to this queue
         let mut addons_folder_ws_ids: Vec<i64> = Vec::new();
-
         let mut is_aborting = false;
+
         debug!("scan main: waiting for tasks to finish");
         while let Some(Ok(result)) = set.join_next().await {
             match result {
@@ -120,11 +119,13 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
                 is_aborting = true;
             }
         }
-        debug!("all addon scan tasks complete");
+
         // All tasks complete, resolve any remaining workshop ids
+        debug!("scan tasks complete, drain remaining workshop ids");
         drain_workshop_addons(&mut addons_folder_ws_ids, &handle, &ws, addons.clone()).await;
 
         // Mark all filenames and workshop srcs as null if we did not update / add them in this scan
+        debug!("marking existing addons without scan ids missing");
         let addons = addons.lock().await;
         addons.scan_mark_missing(scan_id).await.unwrap();
 
@@ -136,7 +137,7 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     // Wait until wait task signals it's completion
     trace!("main thread sleeping");
     if let Err(e) = rx.recv() {
-        debug!("{}", e);
+        debug!("main thread: {}", e);
     }
     app.emit("scan_state", ScanState::Complete {
         total: counter.total.load(Ordering::SeqCst),
@@ -170,14 +171,17 @@ async fn resolve_workshop_folder(path: &PathBuf, addons: &AddonStorageContainer,
     if let Err(e) = addons.mark_workshop_ids(workshop_ids).await {
         error!("failed to mark workshop ids: {}", e);
     }
+    trace!("resolve_workshop_folder: marking ids... done");
 }
 
 /// Drains list of workshop ids and fetches them in batches of 100.
 /// Runs on runtime blocking threads as it's sync HTTP
 async fn drain_workshop_addons(addon_ids: &mut Vec<i64>, rt: &Handle, ws: &Arc<SteamWorkshop>, addons: AddonStorageContainer) {
+    debug!("drain_workshop_addons: got {} ids", addon_ids.len());
     while !addon_ids.is_empty() {
         fetch_workshop_addons(addon_ids, rt, ws, addons.clone()).await;
     }
+    debug!("drain_workshop_addons: done");
 }
 
 /// takes upto 100 ids from list and fetches items and pushes to db
