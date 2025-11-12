@@ -18,10 +18,13 @@
 <script setup lang="ts">
 import Sidebar from '@/components/Sidebar.vue'
 import { notify } from '@kyvg/vue3-notification';
-import { AppConfig, onMounted, ref, Transition } from 'vue';
-import { AddonCounts, ScanResultEvent, ScanResultMessage, ScanStateEvent, StaticAppData } from '../types/App.ts';
+import { onMounted, ref, Transition } from 'vue';
+import { AddonCounts, AppConfig, ScanResultEvent, ScanResultMessage, ScanSpeed, ScanStateEvent, StaticAppData } from '../types/App.ts';
 import { listen } from '@tauri-apps/api/event';
 import { abortScan, countAddons, startScan } from '../js/tauri.ts';
+
+// Is slow, 1s / addon, so run it infrequently
+const BACKGROUND_SCAN_INTERVAL = 1000 * 60 * 60 * 1 // every day?
 
 const props = defineProps<{
     staticData: StaticAppData,
@@ -89,7 +92,10 @@ onMounted(async() => {
         }
     })
 
+    // Start initial scan
     startScan()
+    // Setup background scan, only runs on one thread
+    setInterval(() => startScan(ScanSpeed.Background), BACKGROUND_SCAN_INTERVAL)
 })
 </script>
 
