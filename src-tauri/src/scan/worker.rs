@@ -23,16 +23,14 @@ pub(super) async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContain
     let filename = path.file_name().unwrap().to_string_lossy().to_string();
     counter.total.fetch_add(1, Ordering::Relaxed);
     match scan_file(path, addons, scan_id).await {
-        Ok((result, data)) => {
-            match result {
-                ScanResult::Added => {
-                    counter.added.fetch_add(1, Ordering::Relaxed);
-                    if let Some(ws_id) = data.expect("added has entries").workshop_id {
-                        return WorkerOutput::WorkshopId(ws_id)
-                    }
-                },
-                _ => {}
-            };
+        Ok((ScanResult::Added, data)) => {
+            counter.added.fetch_add(1, Ordering::Relaxed);
+            if let Some(ws_id) = data.expect("added has entries").workshop_id {
+                return WorkerOutput::WorkshopId(ws_id)
+            }
+        },
+        Ok((ScanResult::UpdatedByHash, _)) => {
+            counter.updated.fetch_add(1, Ordering::Relaxed);
         },
         Err(err) => {
             error!("SCAN ERROR FOR \"{}\": {}", filename, err);
@@ -59,7 +57,6 @@ pub enum ScanError {
 }
 
 async fn scan_file(path: PathBuf, addons: AddonStorageContainer, scan_id: u32) -> Result<(ScanResult, Option<AddonData>), ScanError> {
-    // TODO: use hash over title,version and whatever
     let meta = path.metadata().map_err(|e| ScanError::FileError(e))?;
     let filename = path.file_name().unwrap().to_str().unwrap();
     let (info, chapter_ids, hash) = {

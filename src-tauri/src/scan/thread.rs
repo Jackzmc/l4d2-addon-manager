@@ -137,13 +137,19 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     app.emit("scan_state", ScanState::Complete {
         total: counter.total.load(Ordering::SeqCst),
         added: counter.added.load(Ordering::SeqCst),
+        updated: counter.updated.load(Ordering::SeqCst),
         failed: counter.errors.load(Ordering::SeqCst)
     }).ok();
 
-    info!("===SCAN COMPLETE===");
-    info!("{} addons scanned, {} added, {} failed", counter.total.load(Ordering::SeqCst), counter.added.load(Ordering::SeqCst), counter.errors.load(Ordering::SeqCst));
+    info!("====== SCAN COMPLETE ======");
+    info!("{} addons scanned, {} added, {} updated, {} failed",
+        counter.total.load(Ordering::SeqCst),
+        counter.added.load(Ordering::SeqCst),
+        counter.updated.load(Ordering::SeqCst),
+        counter.errors.load(Ordering::SeqCst)
+    );
     info!("Duration: {} seconds", now.elapsed().as_secs());
-    info!("===================");
+    info!("===========================");
     running_signal.store(true, Ordering::SeqCst); // signal that scan over
 }
 

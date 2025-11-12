@@ -22,6 +22,7 @@ mod worker;
 struct ScanCounter {
     total: Arc<AtomicU32>,
     added: Arc<AtomicU32>,
+    updated: Arc<AtomicU32>,
     errors: Arc<AtomicU32>
 }
 
@@ -36,6 +37,7 @@ pub enum ScanState {
     Complete {
         total: u32,
         added: u32,
+        updated: u32,
         failed: u32
     }
 }
