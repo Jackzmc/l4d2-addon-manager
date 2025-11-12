@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::fs::Metadata;
 use l4d2_addon_parser::addon_list::AddonList;
-use log::error;
+use log::{error, warn};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 use crate::modules::cfg::AppConfigContainer;
@@ -17,7 +17,7 @@ pub async fn get_addon_list(cfg: State<'_, AppConfigContainer>) -> Option<AddonL
         .and_then(|folder| match AddonList::new(&folder.parent().unwrap().join("addonlist.txt")) {
             Ok(list) => Some(list),
             Err(e) => {
-                error!("Failed to load addonlist.txt: {}", e);
+                warn!("loading addonlist.txt: {}", e);
                 None
             }
         })

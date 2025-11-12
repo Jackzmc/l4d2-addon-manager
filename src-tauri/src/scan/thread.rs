@@ -43,17 +43,14 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
     let counter = Arc::new(ScanCounter::default());
     app.emit("scan_state", ScanState::Started).ok();
     let scan_id: u32 = random();
-    info!("=== SCAN STARTED ===");
+    info!("===== SCAN STARTED =====");
     info!("workers={} scan_id={}", NUM_WORKER_THREADS, scan_id);
-    info!("====================");
+    info!("========================");
     let now = Instant::now();
-
-    // Load queue with vpks before starting worker threads
-    let mut files = get_vpks_in_dir(&path).expect("failed to scan dir");
 
     // Allow aborting early right before we enter the main process loop
     if !running_signal.load(Ordering::SeqCst) {
-        info!("Got early abort signal, ending");
+        info!("Got early abort signal (1), ending");
         return;
     }
 
@@ -66,11 +63,18 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
         .expect("could not build worker runtime");
 
     let mut set = JoinSet::new();
-    // Drain the queue and start a task for every item
-    while let Some(item) = files.pop() {
+
+    // Fetch addons and start their tasks
+    let files = get_vpks_in_dir(&path).expect("failed to scan dir");
+    for file in files {
         let addons = addons.clone();
         let counter = counter.clone();
-        set.spawn_on(scan_file_wrapper(item, addons, counter, scan_id), rt.handle());
+        set.spawn_on(scan_file_wrapper(file, addons, counter, scan_id), rt.handle());
+    }
+
+    if !running_signal.load(Ordering::SeqCst) {
+        info!("Got early abort signal (2), ending");
+        return;
     }
 
     // The following section is a bit hacky - I'm not sure how to properly run this

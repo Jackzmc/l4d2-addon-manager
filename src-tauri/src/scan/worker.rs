@@ -22,6 +22,7 @@ pub(super) enum WorkerOutput {
 pub(super) async fn scan_file_wrapper(path: PathBuf, addons: AddonStorageContainer, counter: Arc<ScanCounter>, scan_id: u32) -> WorkerOutput {
     let filename = path.file_name().unwrap().to_string_lossy().to_string();
     counter.total.fetch_add(1, Ordering::Relaxed);
+    trace!("scan_file_wrapper \"{}\" thread {:?}", filename, std::thread::current().id());
     match scan_file(path, addons, scan_id).await {
         Ok((ScanResult::Added, data)) => {
             counter.added.fetch_add(1, Ordering::Relaxed);
@@ -70,13 +71,11 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer, scan_id: u32) -
     if addons.update_entry_by_hash(&hash, filename, &info, Some(scan_id)).await
         .map_err(|e| ScanError::UpdateExistingError(e))?
     {
-        debug!("found existing file \"{}\" by hash \"{}\"", filename, hash);
+        debug!("found existing file: \"{}\" by hash \"{}\"", filename, hash);
         return Ok((ScanResult::UpdatedByHash, None))
     }
 
     let ws_id = find_workshop_id(&path, &info);
-
-    debug!("found new addon: {}", filename);
 
     // Treat file as new now
     let flags: AddonFlags = (&info.content).into();
@@ -97,6 +96,8 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer, scan_id: u32) -
     // Add to DB
     addons.add_entry(&data, Some(scan_id), hash).await
         .map_err(|e| ScanError::NewEntryError(e))?;
+
+    debug!("found new addon: \"{}\"", filename);
 
     Ok((ScanResult::Added, Some(data)))
 }
