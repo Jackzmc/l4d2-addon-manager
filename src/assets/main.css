@@ -17,9 +17,23 @@ input.checkbox.large[type='checkbox']:checked:after {
     content: "✓";
 } */
 input.checkbox.large[type='checkbox'] {
-    transform: scale(2);
-    vertical-align: middle;
+    transform: scale(1.25);
+    /* vertical-align: middle; */
+    margin-right: 0.1em;
 }
+input.checkbox.extra-large[type='checkbox'] {
+    transform: scale(2);
+}
+td, th {
+    & input.checkbox.large[type='checkbox'] {
+        vertical-align: middle;
+    }
+}
+label.checkbox.large {
+    left: 25px;
+    transform: scale(1.25);
+}
+
 
 .row td {
     vertical-align: middle;

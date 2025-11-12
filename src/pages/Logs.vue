@@ -2,11 +2,20 @@
 <div>
     <div class="logs-container">
         <table class="table is-fullwidth is-narrow is-hoverable">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Module</th>
+                    <th>Level</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
             <tbody class="is-family-monospace">
                 <LogEntryComponent v-for="(log, i) of logs" :key="i" :entry="log" />
             </tbody>
         </table>
     </div>
+    <br>
 </div>
 </template>
 
@@ -24,7 +33,7 @@ const logs = ref<(LogEntry|ParsedLogEntry)[]>([])
 let unsubLogger: UnlistenFn|undefined
 
 function onLogEntry(entry: LogEntry) {
-    logs.value.push(parseLogEntry(entry))
+    logs.value.unshift(parseLogEntry(entry))
     if(logs.value.length > MAX_LINES) {
         logs.value.splice(MAX_LINES)
     }
@@ -46,7 +55,7 @@ function parseLogEntry(entry: LogEntry): ParsedLogEntry | LogEntry {
         return {
             date: match[1],
             time: match[2],
-            module: match[3],
+            module: match[3].replace("l4d2_addon_manager_lib", "app"),
             levelStr: match[4],
             level: entry.level,
             message: match[5]

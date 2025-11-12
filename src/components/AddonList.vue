@@ -17,7 +17,7 @@
         </tr>
         <tr>
             <th>
-                <input type="checkbox" class="checkbox large" @input="toggleSelectAll" />
+                <input type="checkbox" class="checkbox extra-large" @input="toggleSelectAll" />
             </th>
             <th>Addon</th>
             <th style="min-width:8em">Size</th>

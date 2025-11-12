@@ -1,7 +1,7 @@
 <template>
 <tr :class="['row', {'has-background-danger-light': !props.entry.info.filename }]">
     <td>
-        <input v-if="props.entry.info.filename" type="checkbox" class="checkbox large" @change="emit('select')" :checked="selected" />
+        <input v-if="props.entry.info.filename" type="checkbox" class="checkbox extra-large" @change="emit('select')" :checked="selected" />
     </td>
     <td>
         <a @click="showDetails">

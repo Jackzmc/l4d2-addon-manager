@@ -1,7 +1,8 @@
+use std::fmt::{Display, Formatter};
 use l4d2_addon_parser::addon_list::AddonList;
 use log::error;
 use serde::Serialize;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use crate::modules::cfg::AppConfigContainer;
 
 #[derive(Debug, Serialize)]
@@ -19,4 +20,38 @@ pub async fn get_addon_list(cfg: State<'_, AppConfigContainer>) -> Option<AddonL
                 None
             }
         })
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub enum NotificationType {
+    Info,
+    Error,
+    Warn,
+    Custom(String)
+}
+impl Display for NotificationType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NotificationType::Info => write!(f, "info"),
+            NotificationType::Error => write!(f, "error"),
+            NotificationType::Warn => write!(f, "warn"),
+            NotificationType::Custom(s) => write!(f, "{}", s)
+        }
+    }
+}
+#[derive(Debug, Serialize, Clone)]
+pub struct Notification {
+    #[serde(rename = "type")]
+    pub _type: NotificationType,
+    pub title: String,
+    pub text: Option<String>
+}
+impl Notification {
+    pub fn new(typ: NotificationType, title: String, text: Option<String>) -> Self {
+        Self { _type: typ, title, text }
+    }
+
+    pub fn send(self, app: AppHandle) {
+        app.emit("notify", self).expect("failed to send notification");
+    }
 }

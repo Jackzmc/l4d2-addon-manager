@@ -7,7 +7,7 @@ use crate::commands::addons as cmd_addons;
 use std::sync::{Arc};
 use tauri::async_runtime::Mutex;
 use tauri::{Manager, RunEvent};
-use tauri_plugin_log::{RotationStrategy, TargetKind, WEBVIEW_TARGET};
+use tauri_plugin_log::{TargetKind};
 use crate::modules::store::{AddonStorage, AddonStorageContainer};
 use crate::scan::AddonScanner;
 use crate::modules::cfg;
