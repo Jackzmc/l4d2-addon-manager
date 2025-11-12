@@ -6,10 +6,10 @@ use crate::modules::store::{AddonData, AddonFlags, FileHash};
 use std::sync::Arc;
 use crate::modules::store::AddonStorageContainer;
 use std::path::PathBuf;
+use std::time::Instant;
 use log::{error, trace, warn};
 use log::debug;
 use steam_workshop_api::{SteamWorkshop, WorkshopItem};
-use tokio::time::Instant;
 use crate::util::get_file_size;
 
 #[derive(Debug)]
@@ -44,20 +44,25 @@ pub enum WorkerTask {
 //     None
 // }
 pub fn scan_worker_thread(i: u8, tx: tokio::sync::mpsc::Sender<Result<AddonFileData, String>>, queue: Arc<tokio::sync::Mutex<VecDeque<WorkerTask>>>) -> std::io::Result<()> {
-    while let Some(task) = queue.blocking_lock().pop_front() {
+    loop {
+        let task = {
+            let mut queue = queue.blocking_lock();
+            queue.pop_front()
+        };
         match task {
-            WorkerTask::ScanFile(path) => {
+            Some(WorkerTask::ScanFile(path)) => {
                 let time = Instant::now();
                 match scan_file(path) {
                     Ok(res) => {
                         trace!("[worker{i}] scan_file \"{}\" hash \"{}\" took {}ms", &res.filename, &res.hash, time.elapsed().as_millis());
-                        tx.blocking_send(Ok(res)).expect("failed to send result")
+                        tx.blocking_send(Ok(res)).expect("failed to send result");
                     },
                     Err(e) => {
                         warn!("[worker{i}] scan_file failed: {}", e);
                     }
                 }
-            }
+            },
+            None => break
         }
     }
     trace!("[worker{i}] done. exiting");
