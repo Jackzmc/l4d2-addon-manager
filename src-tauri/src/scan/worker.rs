@@ -69,15 +69,6 @@ async fn scan_file(path: PathBuf, addons: AddonStorageContainer, scan_id: u32) -
     };
     trace!("scan_file \"{}\" hash \"{}\" thread {:?}", filename, hash, std::thread::current().id());
 
-    // // Try to find entry by filename and update
-    // let mut addons = addons.lock().await;
-    // if addons.update_entry_by_filename(filename, hash, meta, &info, Some(scan_id)).await
-    //     .map_err(|e| ScanError::UpdateError(e))? {
-    //     debug!("found existing file: {}, updated", filename);
-    //     return Ok((ScanResult::Updated, None))
-    // }
-
-
     let mut addons = addons.lock().await;
     if addons.update_entry_by_hash(&hash, filename, &info, Some(scan_id)).await
         .map_err(|e| ScanError::UpdateExistingError(e))?

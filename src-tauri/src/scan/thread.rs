@@ -150,14 +150,14 @@ pub(super) fn scan_main_thread(path: PathBuf, running_signal: Arc<AtomicBool>, a
 async fn resolve_workshop_folder(path: &PathBuf, addons: &AddonStorageContainer, ws: &Arc<SteamWorkshop>, handle: &Handle, existing_ws_ids: Vec<i64>) {
     // Extract all workshop ids from workshop addons folder
     // Fetch any items that we don't already have
-    let mut workshop_folder_ws_ids: Vec<i64> = get_workshop_folder_ws_ids(&path).into_iter().filter(|id| !existing_ws_ids.contains(id)).collect();
-    let workshop_ids_clone = workshop_folder_ws_ids.clone();
+    let workshop_ids = get_workshop_folder_ws_ids(&path);
+    let mut workshop_ids_to_fetch: Vec<i64> = workshop_ids.iter().map(|id| id.clone()).filter(|id| !existing_ws_ids.contains(id)).collect();
     // If there is any workshop ids in the workshop folder, fetch them
-    drain_workshop_addons(&mut workshop_folder_ws_ids, &handle, &ws, addons.clone()).await;
+    drain_workshop_addons(&mut workshop_ids_to_fetch, &handle, &ws, addons.clone()).await;
 
     // Then mark all the items in workshop folder as workshop items
     let addons = addons.lock().await;
-    if let Err(e) = addons.mark_workshop_ids(workshop_ids_clone).await {
+    if let Err(e) = addons.mark_workshop_ids(workshop_ids).await {
         error!("failed to mark workshop ids: {}", e);
     }
 }

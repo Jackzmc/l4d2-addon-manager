@@ -183,7 +183,7 @@ impl AddonStorage {
             .into_iter().map(|entry| {
                 AddonEntry {
                     id: entry.publishedfileid.to_string(),
-                    enabled: addon_list.as_ref().map(|list| list.is_enabled(&format!("workshop/{}.vpk", entry.publishedfileid))),
+                    enabled: addon_list.as_ref().map(|list| list.is_enabled(&format!("workshop\\{}.vpk", entry.publishedfileid))),
                     info: AddonData {
                         filename: format!("{}.vpk", entry.publishedfileid),
                         created_at: chrono::DateTime::from_timestamp_secs(entry.time_created).unwrap(),
