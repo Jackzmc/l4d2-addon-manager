@@ -150,7 +150,6 @@ impl AddonScanner {
         self.running_signal.store(false, Ordering::SeqCst);
         // wait for thread to end
         // let main_task = self.scan_main_task.take().unwrap();
-        // FIXME: cant abort block_on not allowed in current thread
         let abort_timed = timeout(
             Duration::from_secs(SCAN_ABORT_TIMEOUT_SEC),
             self.scan_main_task.take().unwrap(),
