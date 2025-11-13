@@ -136,7 +136,6 @@ impl AddonScanner {
         self.running_signal.store(false, Ordering::SeqCst);
         // wait for thread to end
         // let main_task = self.scan_main_task.take().unwrap();
-        // TODO: cancel token? select!(main_task_end , timeout) - force timeout
         block_on(async {
             let abort_timed = timeout(
                 Duration::from_secs(SCAN_ABORT_TIMEOUT_SEC),
@@ -160,9 +159,9 @@ impl AddonScanner {
 
     /// Checks if we still have a thread handle, checks if thread finished, and removes ref
     fn _check_thread_complete(&mut self) -> bool {
-        if let Some(thread) = self.scan_main_task.as_ref() {
-            debug!("thread still exists, check");
-            if thread.is_finished() {
+        if let Some(task) = self.scan_main_task.as_ref() {
+            debug!("scan task still exists, checking if its finished");
+            if task.is_finished() {
                 debug!("its finished, removing it");
                 self.scan_main_task.take();
                 return false

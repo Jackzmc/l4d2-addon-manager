@@ -95,12 +95,23 @@ pub fn scan_workshop_thread(mut ids: Vec<i64>) -> Vec<WorkshopItem> {
     }
     results
 }
-///
+/// returns info, missions, and hash (bytes)
 pub fn scan_file(path: PathBuf) -> Result<AddonFileData, String> {
     let filename = path.file_name().unwrap().to_string_lossy().to_string();
-    let (info, chapter_ids, hash) = parse_addon(&path)
-        .map_err(|e| format!("failed to parse addon \"{}\": {}", filename, e))?;
-    Ok(AddonFileData { path, filename: filename.to_string(), info, chapter_ids, hash })
+    let mut addon = L4D2Addon::from_path(&path).map_err(|e| format!("load addon: {}", e))?;
+    let info = addon.info().map_err(|e| format!("parse info: {}", e))?
+        .ok_or("Bad addon: No addoninfo.txt found in addon".to_string())?;
+
+    let mut chapter_ids: Option<Vec<String>> = None;
+    if let Some(mission) = addon.missions().map_err(|e| format!("parse missions: {}", e))? {
+        if let Some(coop) = mission.modes.get("coop") {
+            chapter_ids = Some(coop.iter().map(|entry| entry.1.map.clone()).collect());
+        }
+    }
+
+    let hash = addon.hash_256().map_err(|e| format!("hash addon: {}", e))?;
+
+    Ok(AddonFileData { path, filename: filename.to_string(), info, chapter_ids, hash: FileHash(hash) })
 }
 
 /// Tries to find existing addon entry by file hash, and update any meta info
@@ -142,22 +153,4 @@ pub async fn async_process_file(file: AddonFileData, addons: AddonStorageContain
     debug!("found new addon: \"{}\"", file.filename);
 
     Ok((ProcessResult::Added, data.workshop_id))
-}
-
-/// returns info, missions, and hash (bytes)
-pub fn parse_addon(path: &PathBuf) -> Result<(AddonInfo, Option<Vec<String>>, FileHash), l4d2_addon_parser::Error> {
-    let mut addon = L4D2Addon::from_path(&path)?;
-    let info = addon.info()?
-        .ok_or(l4d2_addon_parser::Error::VPKError("Bad addon: No addoninfo.txt found in addon".to_string()))?;
-
-    let mut chapter_ids: Option<Vec<String>> = None;
-    if let Some(mission) = addon.missions()? {
-        if let Some(coop) = mission.modes.get("coop") {
-            chapter_ids = Some(coop.iter().map(|entry| entry.1.map.clone()).collect());
-        }
-    }
-
-    let hash = addon.hash_256()?;
-
-    Ok((info, chapter_ids, FileHash(hash)))
 }
