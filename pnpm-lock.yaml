@@ -24,7 +24,7 @@ importers:
         specifier: ~2.7.1
         version: 2.7.1
       '@tauri-apps/plugin-opener':
-        specifier: ^2
+        specifier: ~2
         version: 2.5.2
       bulma:
         specifier: ^1.0.4

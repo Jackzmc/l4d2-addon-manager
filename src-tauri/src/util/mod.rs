@@ -52,7 +52,7 @@ impl Notification {
         Self { _type: typ, title, text }
     }
 
-    pub fn send(self, app: AppHandle) {
+    pub fn send(self, app: &AppHandle) {
         app.emit("notify", self).expect("failed to send notification");
     }
 }

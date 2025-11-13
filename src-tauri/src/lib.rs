@@ -4,6 +4,7 @@ use log::{debug, LevelFilter};
 use crate::cfg::AppConfig;
 use crate::commands::config as cmd_config;
 use crate::commands::addons as cmd_addons;
+use crate::commands::logs as cmd_logs;
 use std::sync::{Arc};
 use tauri::async_runtime::Mutex;
 use tauri::{Manager, RunEvent};
@@ -42,6 +43,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             app.manage(cfg::StaticData::new(app));
             let data_dir = app.path().app_local_data_dir().unwrap();
@@ -65,7 +67,9 @@ pub fn run() {
             commands::init,
             commands::export,
             commands::clear_database,
-            commands::get_logs,
+            cmd_logs::get_logs,
+            cmd_logs::open_logs_folder,
+            cmd_logs::upload_logs,
             cmd_config::choose_game_folder,
             cmd_config::set_game_folder,
             cmd_config::set_config,

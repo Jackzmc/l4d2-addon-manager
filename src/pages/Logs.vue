@@ -1,5 +1,9 @@
 <template>
 <div>
+    <div class="container px-4 buttons">
+        <button :class="['button','is-link','is-outlined']" @click="openLogsFolder()">Open Logs Folder</button>
+        <button :class="['button','is-link','is-outlined',{'is-loading': isLogsUploading}]" @click="onUploadLogsPressed">Upload Logs</button>
+    </div>
     <div class="logs-container">
         <table class="table is-fullwidth is-narrow is-hoverable">
             <thead>
@@ -23,13 +27,14 @@
 import { UnlistenFn } from '@tauri-apps/api/event';
 import { attachLogger } from '@tauri-apps/plugin-log';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { getLogs } from '../js/tauri.ts';
+import { getLogs, openLogsFolder, uploadLogs } from '../js/tauri.ts';
 import { LogEntry } from '../types/App.ts';
 import LogEntryComponent from '../components/LogEntryComponent.vue';
 
 const MAX_LINES = 400
 
 const logs = ref<(LogEntry|ParsedLogEntry)[]>([])
+const isLogsUploading = ref(false)
 let unsubLogger: UnlistenFn|undefined
 
 function onLogEntry(entry: LogEntry) {
@@ -63,6 +68,13 @@ function parseLogEntry(entry: LogEntry): ParsedLogEntry | LogEntry {
     } else {
         return entry
     }
+}
+
+async function onUploadLogsPressed() {
+    if(isLogsUploading.value) return
+    isLogsUploading.value = true
+    await uploadLogs()
+    isLogsUploading.value = false
 }
 
 onMounted(async () => {

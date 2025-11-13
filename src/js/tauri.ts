@@ -142,3 +142,13 @@ export async function resetDatabase(): Promise<void> {
 export async function getLogs(): Promise<LogEntry[]> {
     return await tryInvoke("get_logs")
 }
+
+export async function openLogsFolder(): Promise<void> {
+    return await tryInvoke("open_logs_folder")
+}
+
+/** uploads and opens url in browser */
+export async function uploadLogs(): Promise<string> {
+    return await tryInvoke("upload_logs")
+}
+
