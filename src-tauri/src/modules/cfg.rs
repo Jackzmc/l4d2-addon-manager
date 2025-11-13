@@ -68,7 +68,7 @@ impl AppConfig {
 
     pub fn validate(&self, new_config: &Self) -> Result<(), String> {
         if let Some(key) = &new_config.steam_apikey {
-            if key.len() != 32 {
+            if key.len() > 0 && key.len() != 32 {
                 return Err("Steam API Key must be 32 characters long".to_string());
             }
         }

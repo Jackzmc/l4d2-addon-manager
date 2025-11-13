@@ -10,8 +10,8 @@
             </Field>
 
             <Field label="Steam API Key (optional)" :error="validationErrors['apiKey']">
-                <input type="text" :class="['input',{'is-danger': validationErrors['apiKey']}]" v-model="apiKey" />
-                <p class="help">Allows you to automatically unsubscribe from workshop items. <a target="_blank" href="https://steamcommunity.com/dev/apikey">Get your key here</a></p>
+                <input type="text" :class="['input',{'is-danger': validationErrors['apiKey']}]" v-model.trim="apiKey" />
+                <p class="help">Allows you to automatically unsubscribe from workshop items. <a target="_blank" href="https://steamcommunity.com/dev/apikey">Get your key here.</a> Requires Steam Authenticator.</p>
             </Field>
 
             <Field>
@@ -47,7 +47,7 @@ const validationErrors = computed(() => {
     const errors: Record<string, string> = {}
 
     if(addonsPath.value.length === 0) errors['addonsPath'] = "Addons path must be set"
-    if(apiKey.value != "" && apiKey.value.length !== 32) errors["apiKey"] = "Steam API Key must be 32 characters long"
+    if(apiKey.value.length > 0 && apiKey.value.length !== 32) errors["apiKey"] = "Steam API Key must be 32 characters long"
 
     return errors
 })

@@ -34,8 +34,10 @@ export interface ScanStateEvent_Aborted {
 }
 export interface ScanStateEvent_Complete {
     state: "complete",
+    time: number // seconds
     total: number,
     added: number,
+    updated: number,
     failed: number
 }
 

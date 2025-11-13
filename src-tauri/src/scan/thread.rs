@@ -115,6 +115,7 @@ pub(super) async fn scan_main(path: PathBuf, speed: ScanSpeed, running_signal: A
     info!("all tasks done");
 
     app.emit("scan_state", ScanState::Complete {
+        time: now.elapsed().as_secs(),
         total: counter.total,
         added: counter.added,
         updated: counter.updated,

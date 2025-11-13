@@ -34,6 +34,7 @@ pub enum ScanState {
         reason: Option<String>
     },
     Complete {
+        time: u64,
         total: u32,
         added: u32,
         updated: u32,
