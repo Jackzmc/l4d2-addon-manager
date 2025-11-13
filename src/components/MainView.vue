@@ -1,9 +1,9 @@
 <template>
-    <div class="columns is-gapless">
-        <div class="column is-3" >
+    <div class="columns is-gapless" style="height: 100%">
+        <div class="column is-one-fifth" >
             <Sidebar @scan="onScanRequest" :scan-active="isScanActive" :app-data="staticData" :counts="counts" />
         </div>
-        <main class="column mt-3 section-component">
+        <main class="column mt-3 section-component" >
             <router-view v-slot="{ Component }">
                 <Transition>
                     <keep-alive include="Logs">
@@ -101,7 +101,7 @@ onMounted(async() => {
 
 <style>
 .section-component {
-  height: 720px !important;
+  /* height: 720px !important; */
   overflow: auto !important;
 }
 </style>

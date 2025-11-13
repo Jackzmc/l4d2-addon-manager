@@ -21,6 +21,7 @@
             </th>
             <th>Addon</th>
             <th style="min-width:8em">Size</th>
+            <th>Updated</th>
         </tr>
     </thead>
     <tbody>

@@ -1,6 +1,6 @@
 <template>
 <nav class="panel is-primary sidebar">
-    <p class="panel-heading">L4D2 Addon Manager</p>
+    <p class="panel-heading">v{{ appData.app_version }}</p>
     <router-link class="panel-block is-block" :to="{ name: 'addons-manual' }">
         Managed Addons
         <span class="tag is-rounded is-pulled-right">{{ counts.addons }}</span>
@@ -33,6 +33,7 @@
         <template v-if="appData.git_commit">
             git {{ appData.git_commit }}
         </template>
+        {{ size[0] }}x{{ size[1] }}
     </footer>
 </nav>
 </template>
@@ -66,7 +67,7 @@
 import { AddonCounts, StaticAppData } from '../types/App.ts';
 import { check } from '@tauri-apps/plugin-updater';
 import { notify } from '@kyvg/vue3-notification';
-
+import { onMounted, ref } from 'vue';
 
 const props = defineProps<{
     scanActive: boolean,
@@ -74,6 +75,8 @@ const props = defineProps<{
     counts: AddonCounts
 }>()
 const emit = defineEmits(["scan"])
+
+const size = ref([0, 0])
 
 async function checkForUpdates() {
     const update = await check();
@@ -115,4 +118,11 @@ async function checkForUpdates() {
         text: "Restart app to launch updated version"
     })
 }
+
+onMounted(() => {
+    size.value = [window.outerWidth, window.outerHeight]
+    addEventListener("resize", (_) => {
+        size.value = [window.outerWidth, window.outerHeight]
+    })
+})
 </script>

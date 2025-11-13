@@ -14,7 +14,10 @@
       {
         "title": "L4D2 Addons Manager",
         "width": 1210,
-        "height": 768 
+        "minWidth": 1100,
+        "height": 768,
+        "minHeight": 500,
+        "theme": "light"
       }
     ],
     "security": {
