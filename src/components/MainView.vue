@@ -3,7 +3,7 @@
         <div class="column is-one-fifth" >
             <Sidebar @scan="onScanRequest" :scan-active="isScanActive" :app-data="staticData" :counts="counts" />
         </div>
-        <main class="column mt-3 section-component" >
+        <main class="column mt-0 section-component" >
             <router-view v-slot="{ Component }">
                 <Transition>
                     <keep-alive include="Logs">
@@ -93,7 +93,7 @@ onMounted(async() => {
     })
 
     // Start initial scan
-    startScan()
+    startScan(ScanSpeed.Background)
     // Setup background scan, only runs on one thread
     setInterval(() => startScan(ScanSpeed.Background), BACKGROUND_SCAN_INTERVAL)
 })

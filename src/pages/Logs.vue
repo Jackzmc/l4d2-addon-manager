@@ -1,5 +1,5 @@
 <template>
-<div>
+<div class="mt-2">
     <div class="container px-4 buttons">
         <button :class="['button','is-link','is-outlined']" @click="openLogsFolder()">Open Logs Folder</button>
         <button :class="['button','is-link','is-outlined',{'is-loading': isLogsUploading}]" @click="onUploadLogsPressed">Upload Logs</button>

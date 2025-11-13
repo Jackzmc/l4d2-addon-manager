@@ -1,16 +1,18 @@
 <template>
-<table class="table is-fullwidth has-sticky-header mb-4">
+<table class="table is-fullwidth has-sticky-header mb-4 is-hoverable">
     <thead>
         <tr>
             <td colspan="4">
-                <div class="level">
+                <div class="level mb-2">
                     <div class="level-left">
                         <template v-if="selectedCount > 0">
                             <slot name="select-buttons" :selected="selectedAddons" />
                         </template>
                     </div>
                     <div class="level-right">
-                        <input type="text" class="input" placeholder="Search for an item" v-model="query" />
+                        <Field icon-right="iconoir:search">
+                            <input style="width: 400px" type="text" class="input" placeholder="Search for an item" v-model="query" />
+                        </Field>
                     </div>
                 </div>
             </td>
@@ -29,9 +31,12 @@
             :entry="entry" 
             :selected="isSelected(entry)"
             :workshop="workshop"
+            :is-selecting="isSelecting"
             @show-details="setDetailAddon(entry)"
             @select="setSelected(entry, !isSelected(entry))"
             @select-tag="onTagSelected"
+
+            @click="onEntryClicked(entry)"
         />
     </tbody>
 </table>
@@ -39,12 +44,18 @@
 <AddonInfoModal workshop v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" @refresh="onRefresh" />
 </template>
 
+<style>
+
+</style>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { AddonEntry } from '../types/Addon.ts';
 import AddonRow from './AddonRow.vue';
 import { getAddonContents } from '../js/app.ts';
 import AddonInfoModal from './modals/AddonInfoModal.vue';
+import Field from './Field.vue';
+import Icon from './Icon.vue';
 
 const emit = defineEmits(["refresh"])
 
@@ -61,6 +72,7 @@ const query = ref<string>("")
 const selectedCount = computed(() => {
     return selectedAddons.value.length
 })
+const isSelecting = computed(() => selectedCount.value > 0)
 const selectedAddons = computed(() => {
     return Object.entries(selected.value)
         .filter(([, val]) => val)
@@ -99,6 +111,19 @@ function onRefresh() {
     }   
 }
 
+function onEntryClicked(entry: AddonEntry) {
+    // only select if we already started selecting
+    if(isSelecting.value) {
+        setSelected(entry, !isSelected(entry))
+    }
+}
+
+function clearSelection() {
+    for(const entry of props.addons) {
+        selected.value[entry.info.filename] = false
+    }
+}
+
 watch(() => props.addons, () => {
     if(selectedEntry.value) {
         selectedEntry.value = props.addons.find(entry => entry.id === selectedEntry.value!.id) ?? null
@@ -128,4 +153,6 @@ const queryTags = computed(() => {
     }
     return tags
 })
+
+defineExpose({ clearSelection })
 </script>

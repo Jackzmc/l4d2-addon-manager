@@ -4,10 +4,10 @@
     <div :class="[{'control': !props.horizontal, 'has-icons-left': iconLeft, 'has-icons-right': iconRight}]">
       <slot />
       <span v-if="iconLeft" class="icon is-small is-left">
-        <!-- <FontAwesomeIcon :icon="iconLeft" :spin="iconLeftSpin" :class="iconClass" /> -->
+        <Icon button :icon="iconLeft" :class="iconClass" />
       </span>
       <span v-if="iconRight" class="icon is-small is-right">
-        <!-- <FontAwesomeIcon :icon="iconRight" :spin="iconLeftSpin" :class="iconClass" /> -->
+        <Icon button :icon="iconRight" :class="iconClass" />
       </span>
     </div>
     <p v-if="success || slots.hint_success" class="help is-success"><slot name="hint_success">{{ success }}</slot></p>
@@ -17,6 +17,7 @@
 </template>
 
 <script setup lang="ts">
+import { Icon } from '@iconify/vue';
 import { useSlots } from 'vue'
 // import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 const slots = useSlots()

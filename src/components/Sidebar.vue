@@ -1,28 +1,32 @@
 <template>
 <nav class="panel is-primary sidebar">
-    <p class="panel-heading">v{{ appData.app_version }}</p>
+    <p class="panel-heading has-background-info-light l4d2-text">L4D2 Addon Manager <span class="is-size-7 tag">v{{ appData.app_version }}</span></p>
     <router-link class="panel-block is-block" :to="{ name: 'addons-manual' }">
         Managed Addons
-        <span class="tag is-rounded is-pulled-right">{{ counts.addons }}</span>
+        <span class="tag is-rounded is-pulled-right is-dark px-3 is-family-code">{{ counts.addons }}</span>
     </router-link>
     <router-link class="panel-block is-block" :to="{ name: 'addons-workshop' }">
         Workshop Addons
-        <span class="tag is-rounded is-pulled-right">{{ counts.workshop }}</span>
+        <span class="tag is-rounded is-pulled-right is-dark px-3 is-family-code">{{ counts.workshop }}</span>
     </router-link>
     <div class="panel-block">
         <br>
     </div>
     <a class="panel-block" @click="emit('scan')">
-        {{ props.scanActive ? 'Cancel Scan' : 'Start Scan' }}
+        <Icon v-if="props.scanActive"icon="xmark-circle" class="has-text-danger has-tooltip-right has-tooltip-danger" 
+            data-tooltip="Cancel the currently running scan (may take a few moments)">
+            Cancel Scan
+        </Icon>
+        <Icon v-else icon="page-search" >Start Scan</Icon> 
     </a>
     <router-link class="panel-block" :to="{ name: 'settings' }">
-        Settings
+        <Icon icon="settings">Settings</Icon> 
     </router-link>
     <router-link class="panel-block" :to="{ name: 'export'}">
-        Export
+        <Icon icon="database-export">Export</Icon>
     </router-link>
     <router-link class="panel-block" :to="{ name: 'logs'}">
-        Logs
+        <Icon icon="terminal">Logs</Icon>
     </router-link>
     <!-- <a class="panel-block" @click="checkForUpdates">
         Check for Updates
@@ -61,6 +65,7 @@
     bottom: 0;
     padding-left: 5px;
 }
+
 </style>
 
 <script setup lang="ts">
@@ -68,6 +73,7 @@ import { AddonCounts, StaticAppData } from '../types/App.ts';
 import { check } from '@tauri-apps/plugin-updater';
 import { notify } from '@kyvg/vue3-notification';
 import { onMounted, ref } from 'vue';
+import Icon from './Icon.vue';
 
 const props = defineProps<{
     scanActive: boolean,

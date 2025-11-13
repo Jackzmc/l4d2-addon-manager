@@ -6,7 +6,7 @@ import { AddonEntry } from '../../types/Addon';
         <div class="buttons" v-if="props.entry.info.filename">
             <!-- <button class="button" @click="selectedEntry = null">Close</button> -->
             <button v-if="props.entry.enabled" @click="onSetState(false)" class="button is-link  is-outlined">Disable Addon</button>
-            <button v-else-if="// noinspection PointlessBooleanExpressionJS props.entry.enabled === false" @click="onSetState(true)" class="button is-link">Enable Addon</button>
+            <button v-else-if="props.entry.enabled === false" @click="onSetState(true)" class="button is-link">Enable Addon</button>
             <button @click="onDeletePressed" class="button is-danger is-outlined">Delete</button>
         </div>
         <span v-else>

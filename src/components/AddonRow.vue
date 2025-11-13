@@ -1,5 +1,11 @@
 <template>
-<tr :class="['row', {'has-background-danger-light': !props.entry.info.filename }]">
+<tr :class="['row', 
+    {
+        'has-background-danger-light': !props.entry.info.filename, 
+        'selected': selected, 'selecting': isSelecting,
+        'is-clickable': isSelecting,
+        'is-unselectable': isSelecting
+}]">
     <td>
         <input v-if="props.entry.info.filename" type="checkbox" class="checkbox extra-large" @change="emit('select')" :checked="selected" />
     </td>
@@ -9,8 +15,16 @@
             <span v-else class="has-text-black">{{ entry.info.title }}</span>
         </a>
         <div class="tags mb-2" v-if="tags.length > 0 || props.entry.tags.length > 0">
-            <a class="tag has-background-primary-light" v-for="tag in tags" :key="tag" @click="selectTag(tag)">{{ tag }}</a>
-            <a v-if="!props.workshop" class="tag" v-for="tag in props.entry.tags" :key="tag" @click="selectTag(tag)">tag:{{ tag }}</a>
+            <a v-for="tag in tags" :key="tag" class="tag has-background-primary-light" 
+                @click="selectTag(tag)"
+            >
+                {{ tag }}
+            </a>
+            <template v-if="!props.workshop">
+            <a v-for="tag in props.entry.tags" class="tag" :key="tag" 
+                @click="selectTag(tag)"
+            >tag:{{ tag }}</a>
+            </template>
         </div>
     </td>
     <td>{{ formatSize(entry.info.file_size) }}</td>
@@ -38,13 +52,32 @@ const tags = computed(() => {
 const props = defineProps<{
     entry: AddonEntry,
     workshop?: boolean,
-    selected: boolean
+    selected: boolean,
+
+    isSelecting?: boolean
 }>()
 
 function showDetails() {
+    if(props.isSelecting) return // prevent accidental title clicks when selecting
     emit("showDetails")
 }
 function selectTag(tag: string) {
+    if(props.isSelecting) return // prevent accidental title clicks when selecting
     emit("selectTag", tag)
 }
 </script>
+
+<style scoped>
+.row.selecting {
+    opacity: 0.6;
+}
+
+.row.selecting.selected {
+    opacity: 1;
+    background-color: rgb(232, 246, 252);
+}
+.row.selecting.selected:hover {
+    opacity: 1;
+    background-color: rgb(204, 240, 255);
+}
+</style>

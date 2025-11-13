@@ -1,3 +1,16 @@
+@font-face {
+  font-family: 'Futurot';
+  src: url('/fonts/futurot.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.l4d2-text {
+  font-family: 'Futurot', 'Helvetica';
+}
+
+
 input.checkbox.large[type='checkbox'] {
     transform: scale(1.25);
     /* vertical-align: middle; */
@@ -28,4 +41,8 @@ label.checkbox.large {
 .v-enter-from,
 .v-leave-to {
   opacity: 0;
+}
+
+.panel-block[data-tooltip], .icon-text[data-tooltip] {
+    border-bottom: none !important;
 }
