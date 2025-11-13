@@ -113,12 +113,15 @@ pub fn scan_workshop_thread(mut ids: Vec<i64>) -> Vec<WorkshopItem> {
 /// returns info, missions, and hash (bytes)
 pub fn scan_file(path: PathBuf) -> Result<AddonFileData, String> {
     let filename = path.file_name().unwrap().to_string_lossy().to_string();
+    trace!("scan_file:L4D2Addon {}", filename);
     let mut addon = L4D2Addon::from_path(&path).map_err(|e| format!("load addon: {}", e))?;
+    trace!("scan_file:info {}", filename);
     let info = addon
         .info()
         .map_err(|e| format!("parse info: {}", e))?
         .ok_or("Bad addon: No addoninfo.txt found in addon".to_string())?;
 
+    trace!("scan_file:missions {}", filename);
     let mut chapter_ids: Option<Vec<String>> = None;
     if let Some(mission) = addon
         .missions()
@@ -129,8 +132,10 @@ pub fn scan_file(path: PathBuf) -> Result<AddonFileData, String> {
         }
     }
 
+    trace!("scan_file:hash {}", filename);
     let hash = addon.hash_256().map_err(|e| format!("hash addon: {}", e))?;
 
+    trace!("scan_file:done {}", filename);
     Ok(AddonFileData {
         path,
         filename: filename.to_string(),
