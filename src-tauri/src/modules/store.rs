@@ -247,7 +247,30 @@ impl AddonStorage {
             info.version,
             flags.0,
             scan_id,
-            hash
+            hash,
+        )
+            .execute(&self.pool)
+            .await?
+            .rows_affected();
+        Ok(affected > 0)
+    }
+
+    pub async fn update_entry_by_filename (
+        &mut self,
+        new_hash: &FileHash,
+        filename: &str,
+        info: &AddonInfo,
+        scan_id: Option<u32>,
+    ) -> Result<bool, sqlx::Error> {
+        let flags: AddonFlags = (&info.content).into();
+        let affected = sqlx::query!(
+            "UPDATE addons SET file_hash = ?, title = ?, version = ?, flags = ?, scan_id = ? WHERE filename = ?",
+            new_hash,
+            info.title,
+            info.version,
+            flags.0,
+            scan_id,
+            filename,
         )
             .execute(&self.pool)
             .await?

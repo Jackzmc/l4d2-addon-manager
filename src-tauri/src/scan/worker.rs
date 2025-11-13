@@ -16,6 +16,8 @@ use steam_workshop_api::{SteamWorkshop, WorkshopItem};
 pub enum ProcessResult {
     /// Existing addon found by hash, its info has been updated
     UpdatedByHash,
+    /// Existing addon found by filename, its info has been updated
+    UpdatedByFilename,
     /// No existing addon found, new addon added
     Added,
 }
@@ -169,6 +171,16 @@ pub async fn async_process_file(
             file.filename, file.hash
         );
         return Ok((ProcessResult::UpdatedByHash, None));
+    } else if addons
+        .update_entry_by_filename(&file.hash, &file.filename, &file.info, Some(scan_id))
+        .await
+        .map_err(|e| ProcessError::UpdateExistingError(e))?
+    {
+        debug!(
+            "found existing file: \"{}\" by filename",
+            file.filename
+        );
+        return Ok((ProcessResult::UpdatedByFilename, None));
     }
 
     let ws_id = find_workshop_id(&file.filename, &file.info);

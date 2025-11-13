@@ -91,7 +91,7 @@ pub(super) async fn scan_main(
                             }
                         }
                     }
-                    Ok((ProcessResult::UpdatedByHash, _)) => {
+                    Ok((ProcessResult::UpdatedByHash, _) | (ProcessResult::UpdatedByFilename, _)) => {
                         counter.updated += 1;
                     }
                     Err(err) => {
