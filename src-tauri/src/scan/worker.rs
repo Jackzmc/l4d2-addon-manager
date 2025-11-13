@@ -72,7 +72,10 @@ pub fn scan_worker_thread(
                             &res.hash,
                             time.elapsed().as_millis()
                         );
-                        tx.blocking_send(Ok(res)).expect("failed to send result");
+                        if let Err(_) = tx.blocking_send(Ok(res)) {
+                            trace!("[worker{i}] send error, exiting");
+                            break;
+                        }
                         trace!("[worker{i}] sent result");
                     }
                     Err(e) => {

@@ -30,7 +30,7 @@ pub(super) async fn scan_main(
 ) {
     let threads = speed.threads();
     let mut counter = ScanCounter::default();
-    app.emit("scan_state", ScanState::Started).ok();
+    app.emit("scan_state", ScanState::Started { speed }).ok();
     let scan_id: u32 = random();
     info!("===== SCAN STARTED =====");
     info!("speed={} scan_id={}", speed, scan_id);

@@ -26,7 +26,8 @@ export interface AppConfig {
 
 export type ScanStateEvent = ScanStateEvent_Started | ScanStateEvent_Aborted | ScanStateEvent_Complete
 export interface ScanStateEvent_Started {
-    state: "started"
+    state: "started",
+    speed: ScanSpeed
 }
 export interface ScanStateEvent_Aborted {
     state: "aborted",

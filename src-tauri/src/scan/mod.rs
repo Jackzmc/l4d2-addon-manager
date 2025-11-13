@@ -34,7 +34,9 @@ struct ScanCounter {
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "state")]
 pub enum ScanState {
-    Started,
+    Started {
+        speed: ScanSpeed,
+    },
     Aborted {
         reason: Option<String>,
     },
@@ -66,7 +68,7 @@ pub struct AddonScanner {
     app: AppHandle,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum ScanSpeed {
     /// Uses all threads
