@@ -24,9 +24,9 @@
     <router-link class="panel-block" :to="{ name: 'logs'}">
         Logs
     </router-link>
-    <a class="panel-block" @click="checkForUpdates">
+    <!-- <a class="panel-block" @click="checkForUpdates">
         Check for Updates
-    </a>
+    </a> -->
 
     <footer v-if="appData">
         v{{ appData.app_version }}
