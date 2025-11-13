@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { confirm } from '@tauri-apps/plugin-dialog';
-import { deleteAddons, setAddonState } from '@/js/tauri.ts';
+import { deleteAddons, setAddonState } from '../../js/tauri.ts';
 import { AddonEntry } from '../../types/Addon.ts';
 import AddonInfoTable from '../AddonInfoTable.vue';
 import ModalCard from '../ModalCard.vue';
