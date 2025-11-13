@@ -19,7 +19,7 @@
         </tr>
         <tr>
             <th>
-                <input type="checkbox" class="checkbox extra-large" @input="toggleSelectAll" />
+                <input type="checkbox" class="checkbox extra-large" v-model="selectAll" @input="toggleSelectAll" />
             </th>
             <th>Addon</th>
             <th style="min-width:8em">Size</th>
@@ -55,7 +55,6 @@ import AddonRow from './AddonRow.vue';
 import { getAddonContents } from '../js/app.ts';
 import AddonInfoModal from './modals/AddonInfoModal.vue';
 import Field from './Field.vue';
-import Icon from './Icon.vue';
 
 const emit = defineEmits(["refresh"])
 
@@ -64,6 +63,7 @@ const props = defineProps<{
     workshop?: boolean
 }>()
 
+const selectAll = ref(false)
 const selected = ref<Record<string, boolean>>({})
 const selectedEntry = ref<AddonEntry|null>(null)
 
@@ -122,6 +122,7 @@ function clearSelection() {
     for(const entry of props.addons) {
         selected.value[entry.info.filename] = false
     }
+    selectAll.value = false
 }
 
 watch(() => props.addons, () => {
