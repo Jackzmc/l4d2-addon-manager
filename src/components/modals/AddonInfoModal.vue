@@ -1,7 +1,6 @@
-import { AddonEntry } from '../../types/Addon';
 <template>
 <ModalCard :title="props.entry.info.title" active @close="emit('close')" @refresh="refresh">
-    <AddonInfoTable :entry="entry" />
+    <AddonInfoTable :entry="entry" @refresh="refresh" @set-state="onSetState" />
     <template #footer>
         <div class="buttons" v-if="props.entry.info.filename">
             <!-- <button class="button" @click="selectedEntry = null">Close</button> -->

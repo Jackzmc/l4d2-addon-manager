@@ -12,7 +12,14 @@
     <td>
         <a @click="showDetails">
             <strong v-if="entry.enabled">{{ entry.info.title }}</strong>
-            <span v-else class="has-text-black">{{ entry.info.title }}</span>
+            <span v-else class="has-text-black">
+                {{ entry.info.title }}
+                <b v-if="!props.entry.info.filename" class="has-text-danger has-tooltip-danger has-tooltip-bottom"
+                    data-tooltip="File could not be found. Was it deleted or renamed?"
+                >
+                    (MISSING)
+                </b>
+            </span>
         </a>
         <div class="tags mb-2" v-if="tags.length > 0 || props.entry.tags.length > 0">
             <a v-for="tag in tags" :key="tag" class="tag has-background-primary-light" 
@@ -42,6 +49,7 @@ import { computed } from 'vue';
 import { formatSize, getRelDate } from '../js/utils.ts';
 import { AddonEntry } from '../types/Addon.ts';
 import { getAddonContents } from '../js/app.ts';
+import Icon from './Icon.vue';
 
 const emit = defineEmits(["select", "showDetails", "selectTag"])
 

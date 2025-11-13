@@ -2,11 +2,11 @@
 <div class="modal is-active">
   <div class="modal-background" @click="close"></div>
   <div class="modal-card">
-    <header class="modal-card-head pb-4">
+    <header class="modal-card-head">
       <p class="modal-card-title">{{ props.title }}</p>
       <button class="delete" aria-label="close" @click="close"></button>
     </header>
-    <section class="modal-card-body pt-4 pb-4">
+    <section class="modal-card-body">
        <slot />
     </section>
     <footer class="modal-card-foot">
@@ -33,6 +33,25 @@ function close() {
 
 <style scoped>
 .modal .modal-card {
-    width: 80%;
+  width: 80%;
+
+  & .modal-card-head {
+    padding-top: 20px;
+    padding-bottom: 16px;
+    /* border-radius: 0 !important; */
+    border-bottom: 1px solid lightgray;
+    font-weight: bold;
+  }
+
+  & .modal-card-body {
+    padding-top: 12px;
+    border-left: 4px solid white;
+  }
+
+  & .modal-card-foot {
+    height: 80px;
+    border: 1px solid lightgray;
+    /* border-radius: 0 !important; */
+  }
 }
 </style>

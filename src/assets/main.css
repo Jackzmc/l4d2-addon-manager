@@ -43,6 +43,6 @@ label.checkbox.large {
   opacity: 0;
 }
 
-.panel-block[data-tooltip], .icon-text[data-tooltip] {
+.panel-block[data-tooltip], .icon-text[data-tooltip], .tag[data-tooltip] {
     border-bottom: none !important;
 }

@@ -1,16 +1,24 @@
 <template>
 <table class="table is-fullwidth">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Value</th>
-        </tr>
-    </thead>
     <tbody>
         <tr>
-            <td><b>State</b></td>
-            <td v-if="props.entry.enabled">️✅ Enabled</td>
-            <td v-else-if="props.entry.enabled === false">❌ Disabled</td>
+            <td style="vertical-align: middle"><b>State</b></td>
+            <td v-if="props.entry.enabled" class="">
+                <span class="tag is-success is-medium has-text-white is-clickable has-tooltip-bottom has-tooltip-danger" 
+                    data-tooltip="Click to disable addon"
+                    @click="emit('set-state', true)"
+                >
+                    <Icon icon="check-circle-solid">Enabled</Icon>
+                </span>
+            </td>
+            <td v-else-if="props.entry.enabled === false">
+                <span class="tag is-danger is-medium has-text-white is-clickable has-tooltip-bottom has-tooltip-success" 
+                    data-tooltip="Click to enable addon"
+                    @click="emit('set-state', true)"
+                >
+                    <Icon icon="xmark-circle-solid">Not Enabled</Icon>
+                </span>
+            </td>
             <td v-else><em>Unknown</em></td>
         </tr>
         <tr>
@@ -93,8 +101,9 @@ import { AddonEntry } from '../types/Addon.ts';
 import { getRelDate } from '../js/utils';
 import { getAddonContents } from '../js/app.ts';
 import { addTag } from '../js/tauri.ts';
+import Icon from './Icon.vue';
 
-const emit = defineEmits(["refresh"])
+const emit = defineEmits(["refresh", "set-state"])
 
 const props = defineProps<{
     entry: AddonEntry,
