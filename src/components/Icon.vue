@@ -4,7 +4,7 @@
       <slot name="text-left">{{ textLeft }}</slot>
     </span>
     <span :class="'icon ' + (iconClass ?? '')">
-      <Icon :icon="computedIcon" />
+      <Icon :inline="props.inline != undefined" :icon="computedIcon" />
     </span>
     <span v-if="$slots.default || text" :class="textClass">
       <slot>{{ text }}</slot>
@@ -29,6 +29,8 @@ const props = defineProps<{
   counter?: number,
   layerClass?: string,
   textClass?: string
+
+  inline?: boolean
 }>()
 
 const computedIcon = computed(() => {

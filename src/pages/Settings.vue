@@ -2,8 +2,11 @@
 <div>
     <div class="container px-6">
         <br>
-        <h4 class="title is-4">Settings</h4>
-        <form @submit.prevent="save" class="box">
+        <h4 class="title is-4">
+            <IconVue class="icon" :inline="true" icon="iconoir:settings" />
+            Settings
+        </h4>
+        <form @submit.prevent="save" class="box has-background-info-light">
             <Field label="Addons Folder Path" :error="validationErrors['addonsPath']">
                 <input type="text" :class="['input',{'is-danger': validationErrors['addonsPath']}]" v-model="addonsPath" :error="validationErrors['addonsPath']"/>
                 <p class="help">Path to your addons (example: steam/steamapps/common/Left 4 Dead2/left4dead2/addons)</p>
@@ -19,9 +22,14 @@
             </Field>
         </form>
         <br><br>
-        <h4 class="title is-4">Danger Zone</h4>
-        <div class="buttons box">
-            <button class="button is-danger has-text-weight-bold" @click="promptReset">Reset Database</button>
+        <h4 class="title is-4">
+            <IconVue class="icon" :inline="true" icon="iconoir:warning-triangle" />
+            Danger Zone
+        </h4>
+        <div class="box has-background-danger-light">
+            <div class="buttons">
+                <button class="button is-danger has-text-weight-bold" @click="promptReset">Reset Database</button>
+            </div>
         </div>
     </div>
 </div>
@@ -33,6 +41,9 @@ import Field from '../components/Field.vue';
 import { AppConfig } from '../types/App';
 import { resetDatabase, setConfig } from '../js/tauri.ts';
 import { notify } from '@kyvg/vue3-notification';
+import { confirm } from '@tauri-apps/plugin-dialog';
+import Icon from '../components/Icon.vue';
+import { Icon as IconVue } from '@iconify/vue'
 
 const emit = defineEmits(["config-changed"])
 
@@ -74,10 +85,10 @@ async function save() {
         title: "Settings saved successfully",
     })
 }
-import { confirm } from '@tauri-apps/plugin-dialog';
+
 async function promptReset() {
     if(await confirm(
-        "This will require a full rescan of all your addons and may take a few minutes.", 
+        "This will require a full rescan of all your addons and may take a few minutes. All tags you have added will be lost.", 
         { kind: "warning", title: "Are you sure?", okLabel: "Yes", cancelLabel: "No"}
     )) {
         await resetDatabase()

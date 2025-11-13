@@ -1,13 +1,18 @@
 <template>
     <div class="container px-6">
         <br>
-        <p class="subtitle">This will export the app's database and config, and optionally your game addons</p>
-        <Field class="box">
+        <h4 class="title is-4">Export App</h4>
+        <p class="subtitle">
+            This will export the app's database and config, and optionally your game addons
+            <br>
+            In future versions, you will be able to import, and restore addons
+        </p>
+        <Field class="box has-background-info-light">
             <label class="checkbox large">
                 <input type="checkbox" class="checkbox large" v-model="includeAddons">
                 Include Addons Folder
             </label>
-            <p class="help">Should the export zip also include a backup of your addons folder? This may take a long time.</p>
+            <p>Should the export zip also include a backup of your addons folder? This may take a long time.</p>
         </Field>
 
         <br>

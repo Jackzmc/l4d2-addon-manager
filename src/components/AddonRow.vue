@@ -2,7 +2,7 @@
 <tr :class="['row', 
     {
         'has-background-danger-light': !props.entry.info.filename, 
-        'selected': selected, 'selecting': isSelecting,
+        'selected': selected, 'selecting': isSelecting, 'enabled': props.entry.enabled,
         'is-clickable': isSelecting,
         'is-unselectable': isSelecting
 }]">
@@ -11,7 +11,7 @@
     </td>
     <td>
         <a @click="showDetails">
-            <strong v-if="entry.enabled">{{ entry.info.title }}</strong>
+            <strong v-if="entry.enabled" class="has-text-link">{{ entry.info.title }}</strong>
             <span v-else class="has-text-black">
                 {{ entry.info.title }}
                 <b v-if="!props.entry.info.filename" class="has-text-danger has-tooltip-danger has-tooltip-bottom"
@@ -79,7 +79,14 @@ function selectTag(tag: string) {
 .row.selecting {
     opacity: 0.6;
 }
-
+.row {
+    opacity: 0.7;
+}
+.row.enabled {
+    opacity: 1.0;
+    /* background-color: rgb(232, 246, 252, 0.5); */
+    /* background-color: rgba(212, 255, 241, 0.25); */
+}
 .row.selecting.selected {
     opacity: 1;
     background-color: rgb(232, 246, 252);
@@ -88,4 +95,5 @@ function selectTag(tag: string) {
     opacity: 1;
     background-color: rgb(204, 240, 255);
 }
+
 </style>
