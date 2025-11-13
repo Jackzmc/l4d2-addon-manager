@@ -10,12 +10,17 @@ use serde::{Deserialize, Serialize};
 use log::info;
 use log::debug;
 use std::sync::Arc;
+use std::time::Duration;
+use sqlx::__rt::timeout;
+use tauri::async_runtime::block_on;
 use tauri::Emitter;
 use crate::scan::thread::{scan_main};
 
 mod helpers;
 mod thread;
 mod worker;
+
+const SCAN_ABORT_TIMEOUT_SEC: u64 = 60;
 
 #[derive(Default)]
 struct ScanCounter {
@@ -124,20 +129,28 @@ impl AddonScanner {
         self.scan_main_task = Some(tokio::spawn(scan_main(path, speed, running_signal, addons, app)));
         true
     }
-    pub fn abort(&mut self, reason: Option<String>) {
+    pub fn abort(&mut self, mut reason: Option<String>) {
         if !self.check_running() { return; } // ignore if not running
 
         // this tells thread to abort, but reusing the same signal does
         self.running_signal.store(false, Ordering::SeqCst);
         // wait for thread to end
-        let main_task = self.scan_main_task.take().unwrap();
-        while !main_task.is_finished() {
-            std::thread::sleep(std::time::Duration::from_millis(200));
-        }
-        info!("Scan aborted");
-        self.app.emit("scan_state", ScanState::Aborted {
-            reason
-        }).ok();
+        // let main_task = self.scan_main_task.take().unwrap();
+        // TODO: cancel token? select!(main_task_end , timeout) - force timeout
+        block_on(async {
+            let abort_timed = timeout(
+                Duration::from_secs(SCAN_ABORT_TIMEOUT_SEC),
+                self.scan_main_task.take().unwrap()
+            ).await.is_err();
+            if abort_timed {
+                reason = reason.map(|reason| format!("{} (timed out)", reason));
+            }
+            info!("Scan aborted for \"{:?}\"", reason);
+            self.app.emit("scan_state", ScanState::Aborted {
+                reason
+            }).ok();
+        })
+
     }
 
     /// Is a scan running
