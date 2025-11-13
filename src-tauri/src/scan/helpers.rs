@@ -30,7 +30,17 @@ pub(super) fn get_vpks_in_dir(path: &PathBuf) -> Result<Vec<PathBuf>, String> {
 
 /// Attempts to extract workshop ID from addon url or filename
 pub(super) fn find_workshop_id(filename: &str, addon: &AddonInfo) -> Option<i64> {
-    // Try URL first, as we can guarantee from there
+    // We try filename first, so the user can overwrite with whatever id and change it easily
+    // Then fall back to the addon's set url, if set. That way if they have their own custom version,
+    // they can still change it.
+
+    // Try to get it from filename
+    if let Some(cap) = WORKSHOP_FILE_REGEX.find(filename) {
+        let id = cap.as_str().parse::<i64>().unwrap();
+        return Some(id);
+    }
+
+    //Try to get from addon's info url
     if let Some(url) = &addon.addon_url {
         if let Some(capture) = WORKSHOP_URL_REGEX.captures(url) {
             let id = capture.get(1).unwrap().as_str();
@@ -38,12 +48,6 @@ pub(super) fn find_workshop_id(filename: &str, addon: &AddonInfo) -> Option<i64>
         }
     }
 
-    // Try to get it from filename
-    // let filename = path.file_name().unwrap().to_str().unwrap();
-    if let Some(cap) = WORKSHOP_FILE_REGEX.find(filename) {
-        let id = cap.as_str().parse::<i64>().unwrap();
-        return Some(id);
-    }
     None
 }
 

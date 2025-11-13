@@ -43,6 +43,10 @@ pub enum WorkerTask {
 //     /// Worker has nothing useful
 //     None
 // }
+
+/// Takes file paths from queue and scans them, extracting addon info, and a file hash
+/// Sends to main task on completion of scan
+/// Ends when queue is empty
 pub fn scan_worker_thread(i: u8, tx: tokio::sync::mpsc::Sender<Result<AddonFileData, String>>, queue: Arc<tokio::sync::Mutex<VecDeque<WorkerTask>>>) -> std::io::Result<()> {
     loop {
         let task = {
@@ -68,7 +72,7 @@ pub fn scan_worker_thread(i: u8, tx: tokio::sync::mpsc::Sender<Result<AddonFileD
     trace!("[worker{i}] done. exiting");
     Ok(())
 }
-/// processes list of workshop ids in batches of 100 and returns full list of workshop items
+/// Processes list of workshop ids in batches of 100 and returns full list of workshop items
 pub fn scan_workshop_thread(mut ids: Vec<i64>) -> Vec<WorkshopItem> {
     let ws = SteamWorkshop::new();
     let mut results: Vec<WorkshopItem> = Vec::new();
@@ -91,6 +95,7 @@ pub fn scan_workshop_thread(mut ids: Vec<i64>) -> Vec<WorkshopItem> {
     }
     results
 }
+///
 pub fn scan_file(path: PathBuf) -> Result<AddonFileData, String> {
     let filename = path.file_name().unwrap().to_string_lossy().to_string();
     let (info, chapter_ids, hash) = parse_addon(&path)
@@ -98,6 +103,8 @@ pub fn scan_file(path: PathBuf) -> Result<AddonFileData, String> {
     Ok(AddonFileData { path, filename: filename.to_string(), info, chapter_ids, hash })
 }
 
+/// Tries to find existing addon entry by file hash, and update any meta info
+/// Otherwise, adds new entry to db
 pub async fn async_process_file(file: AddonFileData, addons: AddonStorageContainer, scan_id: u32) -> Result<(ProcessResult, Option<i64>), ProcessError> {
     let meta = file.path.metadata().map_err(|e| ProcessError::FileError(e))?;
     trace!("process_file \"{}\"", &file.filename);
