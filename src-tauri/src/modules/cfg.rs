@@ -1,6 +1,6 @@
-use std::fs;
 use log::debug;
 use serde::{Deserialize, Serialize};
+use std::fs;
 use std::path::PathBuf;
 use steam_workshop_api::SteamWorkshop;
 use tauri::async_runtime::Mutex;
@@ -8,7 +8,7 @@ use tauri::async_runtime::Mutex;
 #[derive(Serialize, Clone)]
 pub struct StaticData {
     pub app_version: String,
-    pub git_commit: Option<String>
+    pub git_commit: Option<String>,
 }
 impl StaticData {
     pub fn new(app: &tauri::App) -> Self {
@@ -27,7 +27,7 @@ pub struct AppConfig {
     _save_path: PathBuf,
 
     pub addons_folder: Option<PathBuf>,
-    pub steam_apikey: Option<String>
+    pub steam_apikey: Option<String>,
 }
 
 impl AppConfig {
@@ -61,7 +61,7 @@ impl AppConfig {
         let mut steam = SteamWorkshop::new();
         if let Some(apikey) = &self.steam_apikey {
             steam.set_apikey(Some(apikey.to_owned()));
-            return (steam, true)
+            return (steam, true);
         }
         (steam, false)
     }

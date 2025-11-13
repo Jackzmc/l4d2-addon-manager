@@ -1,48 +1,69 @@
-use std::fs::{read_dir, File};
+use log::{debug, info};
+use std::fs::{File, read_dir};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use log::{debug, info};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 use zip::result::ZipError;
-use zip::write::{SimpleFileOptions};
+use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
 /// Export the app. If addons_folder set, addons are included
-pub fn export_app(app: AppHandle, app_version: String, addons_folder: Option<PathBuf>) -> Result<PathBuf, String> {
-    info!("Starting app export (with_addons={})", addons_folder.is_some());
+pub fn export_app(
+    app: AppHandle,
+    app_version: String,
+    addons_folder: Option<PathBuf>,
+) -> Result<PathBuf, String> {
+    info!(
+        "Starting app export (with_addons={})",
+        addons_folder.is_some()
+    );
     let now = Instant::now();
     let save_path = prompt_save_location(&app)?;
     let mut file = File::create(&save_path).map_err(|e| format!("create file: {}", e))?;
     let mut zip = zip::ZipWriter::new(&mut file);
 
-    let data_dir = app.path().app_local_data_dir().expect("could not find data dir");
-    zip_file_path(&mut zip, "addon-manager.db",
-          PathBuf::from(data_dir.join("addon-manager.db")),
-          SimpleFileOptions::default()
-    ).map_err(|e| format!("zipping db: {}", e))?;
-    zip_file_path(&mut zip, "config.json",
-          PathBuf::from(data_dir.join("config.json")),
-          SimpleFileOptions::default()
-    ).map_err(|e| format!("zipping config: {}", e))?;
-    zip_file_content(&mut zip, "version.txt",
-         app_version.as_bytes(),
-         SimpleFileOptions::default()
-    ).map_err(|e| format!("zipping version: {}", e))?;
+    let data_dir = app
+        .path()
+        .app_local_data_dir()
+        .expect("could not find data dir");
+    zip_file_path(
+        &mut zip,
+        "addon-manager.db",
+        PathBuf::from(data_dir.join("addon-manager.db")),
+        SimpleFileOptions::default(),
+    )
+    .map_err(|e| format!("zipping db: {}", e))?;
+    zip_file_path(
+        &mut zip,
+        "config.json",
+        PathBuf::from(data_dir.join("config.json")),
+        SimpleFileOptions::default(),
+    )
+    .map_err(|e| format!("zipping config: {}", e))?;
+    zip_file_content(
+        &mut zip,
+        "version.txt",
+        app_version.as_bytes(),
+        SimpleFileOptions::default(),
+    )
+    .map_err(|e| format!("zipping version: {}", e))?;
 
     if let Some(addons_folder) = addons_folder {
         zip_folder_path(&mut zip, "addons", addons_folder, false)
             .map_err(|e| format!("zipping addons: {}", e))?;
     }
 
-    info!("App export complete. Time elapsed: {}", now.elapsed().as_secs());
+    info!(
+        "App export complete. Time elapsed: {}",
+        now.elapsed().as_secs()
+    );
     Ok(save_path)
 }
 
 fn prompt_save_location(app: &AppHandle) -> Result<PathBuf, String> {
-    app
-        .dialog()
+    app.dialog()
         .file()
         .set_file_name("addon-manager-export.zip")
         .set_title("Choose Save Location")
@@ -53,8 +74,15 @@ fn prompt_save_location(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| e.to_string())
 }
 
-fn zip_file_path<T>(zip: &mut ZipWriter::<T>, file_name: &str, path: PathBuf, options: SimpleFileOptions)
--> Result<(), ZipError> where T: std::io::Write + std::io::Seek {
+fn zip_file_path<T>(
+    zip: &mut ZipWriter<T>,
+    file_name: &str,
+    path: PathBuf,
+    options: SimpleFileOptions,
+) -> Result<(), ZipError>
+where
+    T: std::io::Write + std::io::Seek,
+{
     let mut file = File::open(path)?;
     zip.start_file(file_name, options)?;
     let mut buffer = vec![0; 32_000];
@@ -68,15 +96,29 @@ fn zip_file_path<T>(zip: &mut ZipWriter::<T>, file_name: &str, path: PathBuf, op
     Ok(())
 }
 
-fn zip_file_content<T>(zip: &mut ZipWriter::<T>, file_name: &str, content: &[u8], options: SimpleFileOptions)
--> Result<(), ZipError> where T: std::io::Write + std::io::Seek {
+fn zip_file_content<T>(
+    zip: &mut ZipWriter<T>,
+    file_name: &str,
+    content: &[u8],
+    options: SimpleFileOptions,
+) -> Result<(), ZipError>
+where
+    T: std::io::Write + std::io::Seek,
+{
     zip.start_file(file_name, options)?;
     zip.write_all(content)?;
     Ok(())
 }
 
-fn zip_folder_path<T>(zip: &mut ZipWriter::<T>, folder_name: &str, path: PathBuf, recursive: bool)
--> Result<(), ZipError> where T: std::io::Write + std::io::Seek {
+fn zip_folder_path<T>(
+    zip: &mut ZipWriter<T>,
+    folder_name: &str,
+    path: PathBuf,
+    recursive: bool,
+) -> Result<(), ZipError>
+where
+    T: std::io::Write + std::io::Seek,
+{
     zip.add_directory(folder_name, SimpleFileOptions::default())?;
     let dir = read_dir(path);
     let parent_path = Path::new(folder_name);
@@ -88,8 +130,8 @@ fn zip_folder_path<T>(zip: &mut ZipWriter::<T>, folder_name: &str, path: PathBuf
                 let name = name.to_str().unwrap();
                 let file_name = parent_path.join(name).to_string_lossy().to_string();
                 debug!("file = {}; src = {:?}", file_name, path);
-                let options = SimpleFileOptions::default()
-                    .compression_method(CompressionMethod::Stored);
+                let options =
+                    SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
                 // .large_file();
                 zip_file_path(zip, &file_name, path, options)?;
             } else if path.is_dir() {

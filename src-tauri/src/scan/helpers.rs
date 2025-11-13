@@ -1,20 +1,21 @@
 // Can guarantee id is 4 digits at minimum.
 // IDs are sequential, L4D2 Workshop came out after the 10000th addon was released
-use l4d2_addon_parser::{AddonContent, AddonInfo};
 use crate::modules::store::AddonFlags;
-use std::path::PathBuf;
-use regex::Regex;
-use std::sync::LazyLock;
+use l4d2_addon_parser::{AddonContent, AddonInfo};
 use log::{info, warn};
+use regex::Regex;
+use std::path::PathBuf;
+use std::sync::LazyLock;
 
-static WORKSHOP_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"https://steamcommunity.com/sharedfiles/filedetails/\?id=(\d+)").unwrap());
+static WORKSHOP_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"https://steamcommunity.com/sharedfiles/filedetails/\?id=(\d+)").unwrap()
+});
 static WORKSHOP_FILE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\d{4,}").unwrap());
 
 /// Performs a scan of directory returning list of pathbufs
 pub(super) fn get_vpks_in_dir(path: &PathBuf) -> Result<Vec<PathBuf>, String> {
     info!("Scanning addons at {}", path.display());
-    let dir = std::fs::read_dir(path)
-        .map_err(|e| e.to_string())?;
+    let dir = std::fs::read_dir(path).map_err(|e| e.to_string())?;
     let mut list = Vec::new();
     for file in dir {
         let file = file.map_err(|e| e.to_string())?;
@@ -75,7 +76,8 @@ impl Into<AddonFlags> for &AddonContent {
 
 pub(super) fn get_workshop_folder_ws_ids(path: &PathBuf) -> Vec<i64> {
     match get_vpks_in_dir(&path.join("workshop")) {
-        Ok(list) => list.into_iter()
+        Ok(list) => list
+            .into_iter()
             .map(|item| item.file_stem().unwrap().to_string_lossy().parse::<i64>())
             // Remove any files that don't have a valid ID:
             .filter(|item| item.is_ok())

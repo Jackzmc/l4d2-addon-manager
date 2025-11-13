@@ -31,5 +31,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI5MTdBODg0Q0Q0MkUzMjcKUldRbjQwTE5oS2dYdVorTktybTRwbWtvcDE5bnR5ekYwYklQVUs3aitFaHpuVmxZU09xbmxPc3gK",
+      "endpoints": [
+        "https://dl.jackz.me/l4d2-addon-manager/{{arch}}/{{target}}/{{current_version}}",
+        "https://github.com/jackzmc/l4d2-addon-manager/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

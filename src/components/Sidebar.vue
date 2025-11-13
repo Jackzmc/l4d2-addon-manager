@@ -24,6 +24,9 @@
     <router-link class="panel-block" :to="{ name: 'logs'}">
         Logs
     </router-link>
+    <a class="panel-block" @click="checkForUpdates">
+        Check for Updates
+    </a>
 
     <footer v-if="appData">
         v{{ appData.app_version }}
@@ -61,6 +64,9 @@
 
 <script setup lang="ts">
 import { AddonCounts, StaticAppData } from '../types/App.ts';
+import { check } from '@tauri-apps/plugin-updater';
+import { notify } from '@kyvg/vue3-notification';
+
 
 const props = defineProps<{
     scanActive: boolean,
@@ -68,4 +74,45 @@ const props = defineProps<{
     counts: AddonCounts
 }>()
 const emit = defineEmits(["scan"])
+
+async function checkForUpdates() {
+    const update = await check();
+    if(!update) return notify({
+        type: "info",
+        title: "No update found"
+    })
+    console.info(
+        `found update ${update.version} from ${update.date} with notes ${update.body}`
+    );
+    notify({
+        type: "info",
+        title: "Update Found",
+        text: "Downloading update"
+    })
+    let downloaded = 0;
+    let contentLength = 0;
+    // alternatively we could also call update.download() and update.install() separately
+    await update.downloadAndInstall((event) => {
+        switch (event.event) {
+            case 'Started':
+                contentLength = event.data.contentLength ?? 0;
+                console.log(`started downloading ${event.data.contentLength} bytes`);
+                break;
+            case 'Progress':
+                downloaded += event.data.chunkLength;
+                console.log(`downloaded ${downloaded} from ${contentLength}`);
+                break;
+            case 'Finished':
+                console.log('download finished');
+                break;
+        }
+    });
+
+    console.log('update installed');
+    notify({
+        type: "info",
+        title: "Update Complete",
+        text: "Restart app to launch updated version"
+    })
+}
 </script>

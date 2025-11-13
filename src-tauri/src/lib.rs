@@ -1,45 +1,48 @@
-use tauri_plugin_log::Target;
-use std::str::FromStr;
-use log::{debug, LevelFilter};
 use crate::cfg::AppConfig;
-use crate::commands::config as cmd_config;
 use crate::commands::addons as cmd_addons;
+use crate::commands::config as cmd_config;
 use crate::commands::logs as cmd_logs;
-use std::sync::{Arc};
-use tauri::async_runtime::Mutex;
-use tauri::{Manager, RunEvent};
-use tauri_plugin_log::{TargetKind};
+use crate::modules::cfg;
 use crate::modules::store::{AddonStorage, AddonStorageContainer};
 use crate::scan::AddonScanner;
-use crate::modules::cfg;
+use log::{LevelFilter, debug};
+use std::str::FromStr;
+use std::sync::Arc;
+use tauri::async_runtime::Mutex;
+use tauri::{Manager, RunEvent};
+use tauri_plugin_log::Target;
+use tauri_plugin_log::TargetKind;
 
 mod commands;
-pub mod util;
 mod models;
-mod scan;
 mod modules;
+mod scan;
+pub mod util;
 
 fn log_level() -> LevelFilter {
-    let level = LevelFilter::from_str(option_env!("APP_LOG_LEVEL")
-        .unwrap_or("trace")).expect("invalid log level");
+    let level = LevelFilter::from_str(option_env!("APP_LOG_LEVEL").unwrap_or("trace"))
+        .expect("invalid log level");
     println!("log level: {}", level);
     level
 }
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(tauri_plugin_log::log::LevelFilter::Info)
                 .build(),
         )
-        .plugin(tauri_plugin_log::Builder::new()
-            // Set default level to INFO, but our crate TRACE
-            .level(log::LevelFilter::Info)
-            .level_for("l4d2_addon_manager_lib", log_level())
-            // in addition to defaults, also send to frontend
-            .target(Target::new(TargetKind::Webview))
-            .build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                // Set default level to INFO, but our crate TRACE
+                .level(log::LevelFilter::Info)
+                .level_for("l4d2_addon_manager_lib", log_level())
+                // in addition to defaults, also send to frontend
+                .target(Target::new(TargetKind::Webview))
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -51,14 +54,17 @@ pub fn run() {
             let config = AppConfig::load(data_dir.join("config.json"));
             app.manage(Mutex::new(config));
             let db = tauri::async_runtime::block_on(async move {
-                let db = AddonStorage::new(data_dir).await.expect("failed to create db");
+                let db = AddonStorage::new(data_dir)
+                    .await
+                    .expect("failed to create db");
                 db.run_migrations().await.expect("migrations failed");
                 let db = Arc::new(Mutex::new(db));
                 db
             });
             app.manage(db.clone());
 
-            let scanner = std::sync::Mutex::new(AddonScanner::new(db.clone(), app.handle().clone()));
+            let scanner =
+                std::sync::Mutex::new(AddonScanner::new(db.clone(), app.handle().clone()));
             app.manage(scanner);
 
             Ok(())
@@ -86,7 +92,7 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
     app.run(|app, event| match event {
-        RunEvent::ExitRequested {..} => {
+        RunEvent::ExitRequested { .. } => {
             let db = app.state::<AddonStorageContainer>().inner().clone();
             // let db = db.blocking_lock();
             tauri::async_runtime::spawn(async move {
@@ -95,7 +101,7 @@ pub fn run() {
                 db.close().await;
                 debug!("cleaning up db... done");
             });
-        },
+        }
         _ => {}
     })
 }

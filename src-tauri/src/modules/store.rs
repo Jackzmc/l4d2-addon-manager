@@ -1,19 +1,19 @@
+use crate::models::addon::{StandardAddonWithTags, WorkshopEntry};
+use bitflags::bitflags;
+use chrono::DateTime;
+use l4d2_addon_parser::AddonInfo;
+use l4d2_addon_parser::addon_list::AddonList;
+use log::info;
+use serde::{Deserialize, Serialize};
+use sqlx::types::chrono;
+use sqlx::types::chrono::Utc;
+use sqlx::{AssertSqlSafe, FromRow, Pool, QueryBuilder, Sqlite};
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
-use bitflags::bitflags;
-use chrono::DateTime;
-use l4d2_addon_parser::addon_list::AddonList;
-use l4d2_addon_parser::AddonInfo;
-use log::{info};
-use serde::{Deserialize, Serialize};
-use sqlx::{AssertSqlSafe,  FromRow, Pool, QueryBuilder, Sqlite};
-use sqlx::types::chrono;
-use sqlx::types::chrono::Utc;
 use steam_workshop_api::WorkshopItem;
 use tauri::async_runtime::Mutex;
-use crate::models::addon::{StandardAddonWithTags, WorkshopEntry};
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 /// for standard addons
@@ -92,7 +92,7 @@ pub struct AddonEntry {
     /// A list of user added tags for entry
     pub tags: Vec<String>,
     /// Is addon enabled? Can be None if file missing
-    pub enabled: Option<bool>
+    pub enabled: Option<bool>,
 }
 
 pub struct AddonStorage {
@@ -111,13 +111,11 @@ impl AddonStorage {
             .create_if_missing(true)
             .foreign_keys(true)
             .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal);
-        let pool = sqlx::sqlite::SqlitePool::connect_with(connection_options).await
+        let pool = sqlx::sqlite::SqlitePool::connect_with(connection_options)
+            .await
             .map_err(|e| e.to_string())?;
         info!("Pool ready setup for {}", db_path.display());
-        Ok(Self {
-            pool,
-            db_path
-        })
+        Ok(Self { pool, db_path })
     }
 
     pub async fn close(&self) {
@@ -141,82 +139,106 @@ impl AddonStorage {
         Ok(total)
     }
 
-    pub async fn list(&self, addon_list: Option<AddonList>) -> Result<Vec<AddonEntry>, sqlx::Error> {
+    pub async fn list(
+        &self,
+        addon_list: Option<AddonList>,
+    ) -> Result<Vec<AddonEntry>, sqlx::Error> {
         // TODO: include workshop_items.*
-        Ok(sqlx::query_as::<_, StandardAddonWithTags>(r#"
+        Ok(sqlx::query_as::<_, StandardAddonWithTags>(
+            r#"
                 select addons.*, GROUP_CONCAT(tags.tag) tags
                 from addons
                 left join addon_tags tags on tags.hash = addons.file_hash
                 left join workshop_items wi on wi.publishedfileid = addons.workshop_id
                 group by addons.file_hash
-            "#
+            "#,
         )
-            .fetch_all(&self.pool).await?
-            .into_iter().map(|entry| {
-                // Skip empty strings as they have no tags
-                let tags: Vec<String> = if entry.tags != "" {
-                    entry.tags.split(',').map(|s| s.to_string()).collect()
-                } else {
-                    vec![]
-                };
-                AddonEntry {
-                    id: entry.file_hash.to_string(),
-                    enabled: addon_list.as_ref().map(|list| list.is_enabled(&entry.data.filename)),
-                    info: entry.data,
-                    workshop: None,
-                    tags,
-                }
-            })
-            .collect::<Vec<AddonEntry>>())
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(|entry| {
+            // Skip empty strings as they have no tags
+            let tags: Vec<String> = if entry.tags != "" {
+                entry.tags.split(',').map(|s| s.to_string()).collect()
+            } else {
+                vec![]
+            };
+            AddonEntry {
+                id: entry.file_hash.to_string(),
+                enabled: addon_list
+                    .as_ref()
+                    .map(|list| list.is_enabled(&entry.data.filename)),
+                info: entry.data,
+                workshop: None,
+                tags,
+            }
+        })
+        .collect::<Vec<AddonEntry>>())
     }
 
-    pub async fn list_workshop(&self, addon_list: Option<AddonList>) -> Result<Vec<AddonEntry>, sqlx::Error> {
+    pub async fn list_workshop(
+        &self,
+        addon_list: Option<AddonList>,
+    ) -> Result<Vec<AddonEntry>, sqlx::Error> {
         // flags & 1 marks AddonFlags::WORKSHOP
-        Ok(sqlx::query_as::<_, WorkshopEntry>(r#"
+        Ok(sqlx::query_as::<_, WorkshopEntry>(
+            r#"
                 select *
                 from workshop_items
                 where flags & 1
                 order by time_updated desc
-            "#
+            "#,
         )
-            .fetch_all(&self.pool).await?
-            .into_iter().map(|entry| {
-                AddonEntry {
-                    id: entry.publishedfileid.to_string(),
-                    enabled: addon_list.as_ref().map(|list| list.is_enabled(&format!("workshop\\{}.vpk", entry.publishedfileid))),
-                    info: AddonData {
-                        filename: format!("{}.vpk", entry.publishedfileid),
-                        created_at: chrono::DateTime::from_timestamp_secs(entry.time_created).unwrap(),
-                        updated_at: chrono::DateTime::from_timestamp_secs(*entry.time_updated.as_ref().unwrap()).unwrap(),
-                        file_size: entry.file_size as i64,
-                        flags: AddonFlags(0),
-                        title: entry.title.clone(),
-                        author: Some(entry.creator_id.to_string()),
-                        version: "workshop".to_string(),
-                        tagline: None,
-                        chapter_ids: None,
-                        workshop_id: Some(entry.publishedfileid as i64),
-                    },
-                    tags: entry.tags.split(',').map(|s| s.to_string()).collect(),
-                    workshop: Some(entry),
-                }
-            })
-                .collect::<Vec<AddonEntry>>())
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(|entry| AddonEntry {
+            id: entry.publishedfileid.to_string(),
+            enabled: addon_list
+                .as_ref()
+                .map(|list| list.is_enabled(&format!("workshop\\{}.vpk", entry.publishedfileid))),
+            info: AddonData {
+                filename: format!("{}.vpk", entry.publishedfileid),
+                created_at: chrono::DateTime::from_timestamp_secs(entry.time_created).unwrap(),
+                updated_at: chrono::DateTime::from_timestamp_secs(
+                    *entry.time_updated.as_ref().unwrap(),
+                )
+                .unwrap(),
+                file_size: entry.file_size as i64,
+                flags: AddonFlags(0),
+                title: entry.title.clone(),
+                author: Some(entry.creator_id.to_string()),
+                version: "workshop".to_string(),
+                tagline: None,
+                chapter_ids: None,
+                workshop_id: Some(entry.publishedfileid as i64),
+            },
+            tags: entry.tags.split(',').map(|s| s.to_string()).collect(),
+            workshop: Some(entry),
+        })
+        .collect::<Vec<AddonEntry>>())
     }
 
     pub async fn list_workshop_ids(&self) -> Result<Vec<i64>, sqlx::Error> {
-        sqlx::query!(r#"
+        sqlx::query!(
+            r#"
                 select publishedfileid
                 from workshop_items
             "#
         )
-            .map(|row| row.publishedfileid)
-            .fetch_all(&self.pool).await
+        .map(|row| row.publishedfileid)
+        .fetch_all(&self.pool)
+        .await
     }
 
-
     /// Update the entry by its hash. Returns boolean if an entry existed and had its filename & content changed, false if not
-    pub async fn update_entry_by_hash(&mut self, hash: &FileHash, new_filename: &str, info: &AddonInfo, scan_id: Option<u32>) -> Result<bool, sqlx::Error> {
+    pub async fn update_entry_by_hash(
+        &mut self,
+        hash: &FileHash,
+        new_filename: &str,
+        info: &AddonInfo,
+        scan_id: Option<u32>,
+    ) -> Result<bool, sqlx::Error> {
         let flags: AddonFlags = (&info.content).into();
         let affected = sqlx::query!(
             "UPDATE addons SET filename = ?, title = ?, version = ?, flags = ?, scan_id = ? WHERE file_hash = ?",
@@ -234,7 +256,12 @@ impl AddonStorage {
     }
 
     /// Adds a new entry to database
-    pub async fn add_entry(&self, addon: &AddonData, scan_id: Option<u32>, hash: FileHash) -> Result<(), sqlx::Error> {
+    pub async fn add_entry(
+        &self,
+        addon: &AddonData,
+        scan_id: Option<u32>,
+        hash: FileHash,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"INSERT INTO addons
                 (filename, updated_at, created_at, file_size, title, author, version, tagline, flags, workshop_id, scan_id, file_hash)
@@ -253,15 +280,20 @@ impl AddonStorage {
             scan_id,
             hash
         ).execute(&self.pool).await?;
-        info!("Added entry {} (flags={}) (ws_id={:?}) (title={})", addon.filename, addon.flags.0, addon.workshop_id, addon.title);
+        info!(
+            "Added entry {} (flags={}) (ws_id={:?}) (title={})",
+            addon.filename, addon.flags.0, addon.workshop_id, addon.title
+        );
         Ok(())
     }
 
     /// Attempts to add workshop items to db, overwriting existing if found
     pub async fn add_workshop_items(&self, items: Vec<WorkshopItem>) -> Result<(), sqlx::Error> {
-        if items.is_empty() { return Ok(()) }
+        if items.is_empty() {
+            return Ok(());
+        }
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT OR REPLACE INTO workshop_items (publishedfileid, title, time_created, time_updated, file_size, description, file_url, creator_id, tags) "
+            "INSERT OR REPLACE INTO workshop_items (publishedfileid, title, time_created, time_updated, file_size, description, file_url, creator_id, tags) ",
         );
         let num_items = items.len();
         query_builder.push_values(items, |mut b, item| {
@@ -273,7 +305,13 @@ impl AddonStorage {
                 .push_bind(item.description)
                 .push_bind(item.file_url)
                 .push_bind(item.creator)
-                .push_bind(item.tags.iter().map(|tag| tag.tag.clone()).collect::<Vec<String>>().join(","));
+                .push_bind(
+                    item.tags
+                        .iter()
+                        .map(|tag| tag.tag.clone())
+                        .collect::<Vec<String>>()
+                        .join(","),
+                );
         });
 
         let query = query_builder.build();
@@ -286,19 +324,26 @@ impl AddonStorage {
     /// To be called at end of scan
     pub async fn scan_mark_missing(&self, id: u32) -> Result<(), sqlx::Error> {
         sqlx::query!("UPDATE addons SET filename = NULL WHERE scan_id != ?", id)
-            .execute(&self.pool).await?;
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
     pub async fn mark_workshop_ids(&self, ids: Vec<i64>) -> Result<(), sqlx::Error> {
-        if ids.is_empty() { return Ok(()) }
+        if ids.is_empty() {
+            return Ok(());
+        }
         let mut tx = self.pool.begin().await?;
         // Drop AddonFlags::WORKSHOP for all items
         sqlx::query!("UPDATE workshop_items SET flags=flags&~1 WHERE flags & 1")
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         // Set all given ids to include AddonFlags::WORKSHOP
-        let params = format!("?{}", ", ?".repeat(ids.len()-1));
-        let mut query = sqlx::query(AssertSqlSafe(format!("UPDATE workshop_items SET flags=flags|1 WHERE publishedfileid IN ({})", params)));
+        let params = format!("?{}", ", ?".repeat(ids.len() - 1));
+        let mut query = sqlx::query(AssertSqlSafe(format!(
+            "UPDATE workshop_items SET flags=flags|1 WHERE publishedfileid IN ({})",
+            params
+        )));
         for id in ids {
             query = query.bind(id);
         }
@@ -306,11 +351,13 @@ impl AddonStorage {
         tx.commit().await
     }
 
-
     pub async fn delete_filenames(&self, filenames: Vec<String>) -> Result<(), sqlx::Error> {
-        let params = format!("?{}", ", ?".repeat(filenames.len()-1));
+        let params = format!("?{}", ", ?".repeat(filenames.len() - 1));
         // dynamically add ?, ?, ?... to number of filenames
-        let mut query = sqlx::query(AssertSqlSafe(format!("DELETE FROM addons WHERE filename IN ({})", params)));
+        let mut query = sqlx::query(AssertSqlSafe(format!(
+            "DELETE FROM addons WHERE filename IN ({})",
+            params
+        )));
         for filename in filenames {
             query = query.bind(filename);
         }
@@ -323,6 +370,4 @@ impl AddonStorage {
         self.pool.close().await;
         fs::remove_file(&self.db_path)
     }
-
 }
-

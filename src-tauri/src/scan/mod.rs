@@ -1,20 +1,20 @@
-use std::sync::atomic::Ordering;
-use std::path::PathBuf;
-use std::sync::Mutex;
-use tauri::AppHandle;
 use crate::modules::store::AddonStorageContainer;
-use std::sync::atomic::AtomicBool;
+use crate::scan::thread::scan_main;
 use crate::scan::worker::ProcessError;
-use std::fmt::Display;
-use serde::{Deserialize, Serialize};
-use log::info;
 use log::debug;
-use std::sync::Arc;
-use std::time::Duration;
+use log::info;
+use serde::{Deserialize, Serialize};
 use sqlx::__rt::timeout;
-use tauri::async_runtime::block_on;
+use std::fmt::Display;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+use std::time::Duration;
+use tauri::AppHandle;
 use tauri::Emitter;
-use crate::scan::thread::{scan_main};
+use tauri::async_runtime::block_on;
 
 mod helpers;
 mod thread;
@@ -27,7 +27,7 @@ struct ScanCounter {
     total: u32,
     added: u32,
     updated: u32,
-    errors: u32
+    errors: u32,
 }
 
 #[derive(Serialize, Clone)]
@@ -36,22 +36,24 @@ struct ScanCounter {
 pub enum ScanState {
     Started,
     Aborted {
-        reason: Option<String>
+        reason: Option<String>,
     },
     Complete {
         time: u64,
         total: u32,
         added: u32,
         updated: u32,
-        failed: u32
-    }
+        failed: u32,
+    },
 }
 
 impl Display for ProcessError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ProcessError::FileError(e) => write!(f, "IO Error: {}", e),
-            ProcessError::UpdateExistingError(e) => write!(f, "Error updating existing item: {}", e),
+            ProcessError::UpdateExistingError(e) => {
+                write!(f, "Error updating existing item: {}", e)
+            }
             ProcessError::NewEntryError(e) => write!(f, "Error creating new entry: {}", e),
         }
     }
@@ -61,7 +63,7 @@ pub struct AddonScanner {
     scan_main_task: Option<tokio::task::JoinHandle<()>>,
     running_signal: Arc<AtomicBool>,
     addons: AddonStorageContainer,
-    app: AppHandle
+    app: AppHandle,
 }
 
 #[derive(Deserialize, Clone)]
@@ -72,7 +74,7 @@ pub enum ScanSpeed {
     /// Uses half of threads
     Normal,
     /// Uses one thread
-    Background
+    Background,
 }
 
 impl Display for ScanSpeed {
@@ -81,7 +83,7 @@ impl Display for ScanSpeed {
         match self {
             ScanSpeed::Maximum => write!(f, "Maximum ({} threads)", threads),
             ScanSpeed::Normal => write!(f, "Normal ({} threads)", threads),
-            ScanSpeed::Background => write!(f, "Background ({} threads)", threads)
+            ScanSpeed::Background => write!(f, "Background ({} threads)", threads),
         }
     }
 }
@@ -98,7 +100,7 @@ impl ScanSpeed {
         match self {
             ScanSpeed::Maximum => num_cpus::get() as u8,
             ScanSpeed::Normal => (num_cpus::get() as f32 / 2.0).ceil() as u8,
-            ScanSpeed::Background => 1
+            ScanSpeed::Background => 1,
         }
     }
 }
@@ -110,7 +112,7 @@ impl AddonScanner {
             scan_main_task: None,
             running_signal: Arc::new(AtomicBool::new(false)),
             addons,
-            app
+            app,
         }
     }
 
@@ -120,17 +122,27 @@ impl AddonScanner {
     /// When worker tasks complete, any workshop ids to fetch items are sent, and resolved once we have over 100
     /// When all worker tasks done, any remaining workshop items are fetched in batches of 100
     pub fn start(&mut self, path: PathBuf, speed: ScanSpeed) -> bool {
-        if self.check_running() { return false; } // ignore if not running
+        if self.check_running() {
+            return false;
+        } // ignore if not running
 
         let addons = self.addons.clone();
         let app = self.app.clone();
         let running_signal = self.running_signal.clone();
         self.running_signal.store(true, Ordering::SeqCst);
-        self.scan_main_task = Some(tokio::spawn(scan_main(path, speed, running_signal, addons, app)));
+        self.scan_main_task = Some(tokio::spawn(scan_main(
+            path,
+            speed,
+            running_signal,
+            addons,
+            app,
+        )));
         true
     }
     pub fn abort(&mut self, mut reason: Option<String>) {
-        if !self.check_running() { return; } // ignore if not running
+        if !self.check_running() {
+            return;
+        } // ignore if not running
 
         // this tells thread to abort, but reusing the same signal does
         self.running_signal.store(false, Ordering::SeqCst);
@@ -139,17 +151,18 @@ impl AddonScanner {
         block_on(async {
             let abort_timed = timeout(
                 Duration::from_secs(SCAN_ABORT_TIMEOUT_SEC),
-                self.scan_main_task.take().unwrap()
-            ).await.is_err();
+                self.scan_main_task.take().unwrap(),
+            )
+            .await
+            .is_err();
             if abort_timed {
                 reason = reason.map(|reason| format!("{} (timed out)", reason));
             }
             info!("Scan aborted for \"{:?}\"", reason);
-            self.app.emit("scan_state", ScanState::Aborted {
-                reason
-            }).ok();
+            self.app
+                .emit("scan_state", ScanState::Aborted { reason })
+                .ok();
         })
-
     }
 
     /// Is a scan running
@@ -164,9 +177,9 @@ impl AddonScanner {
             if task.is_finished() {
                 debug!("its finished, removing it");
                 self.scan_main_task.take();
-                return false
+                return false;
             }
-            return true
+            return true;
         }
         false
     }

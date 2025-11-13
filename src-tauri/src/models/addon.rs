@@ -1,6 +1,6 @@
+use crate::modules::store::{AddonData, FileHash};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use crate::modules::store::{AddonData, FileHash};
 
 #[derive(Debug, FromRow)]
 pub struct StandardAddonWithTags {
@@ -10,7 +10,7 @@ pub struct StandardAddonWithTags {
     pub file_hash: FileHash,
 
     /// Comma separated list of tags
-    pub tags: String
+    pub tags: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]

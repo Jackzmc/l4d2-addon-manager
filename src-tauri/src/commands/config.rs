@@ -1,10 +1,10 @@
 use crate::modules::cfg::{AppConfig, AppConfigContainer};
+use crate::scan::{ScanSpeed, ScannerContainer};
 use log::{debug, info};
 use std::env::home_dir;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, State};
-use tauri_plugin_dialog::{DialogExt};
-use crate::scan::{ScanSpeed, ScannerContainer};
+use tauri_plugin_dialog::DialogExt;
 
 #[tauri::command]
 pub async fn choose_game_folder(app: tauri::AppHandle) -> Result<PathBuf, String> {
@@ -50,7 +50,7 @@ pub async fn choose_game_folder(app: tauri::AppHandle) -> Result<PathBuf, String
 pub async fn set_game_folder(
     cfg: State<'_, AppConfigContainer>,
     path: String,
-    scanner: State<'_, ScannerContainer>
+    scanner: State<'_, ScannerContainer>,
 ) -> Result<(), String> {
     debug!("setting addons folder to {}", path);
     let mut cfg = cfg.lock().await;
@@ -80,5 +80,3 @@ pub async fn set_config(
     app.emit("config_changed", config).ok();
     Ok(())
 }
-
-

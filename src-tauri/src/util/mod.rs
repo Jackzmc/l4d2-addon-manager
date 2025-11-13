@@ -1,6 +1,6 @@
 use crate::modules::cfg::AppConfigContainer;
 use l4d2_addon_parser::addon_list::AddonList;
-use log::{warn};
+use log::warn;
 use serde::Serialize;
 use std::fmt::{Display, Formatter};
 use std::fs::Metadata;
@@ -13,14 +13,15 @@ pub struct SetRoute {
 
 pub async fn get_addon_list(cfg: State<'_, AppConfigContainer>) -> Option<AddonList> {
     let cfg = cfg.lock().await;
-    cfg.addons_folder.as_ref()
-        .and_then(|folder| match AddonList::new(&folder.parent().unwrap().join("addonlist.txt")) {
+    cfg.addons_folder.as_ref().and_then(|folder| {
+        match AddonList::new(&folder.parent().unwrap().join("addonlist.txt")) {
             Ok(list) => Some(list),
             Err(e) => {
                 warn!("loading addonlist.txt: {}", e);
                 None
             }
-        })
+        }
+    })
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -28,7 +29,7 @@ pub enum NotificationType {
     Info,
     Error,
     Warn,
-    Custom(String)
+    Custom(String),
 }
 impl Display for NotificationType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -36,7 +37,7 @@ impl Display for NotificationType {
             NotificationType::Info => write!(f, "info"),
             NotificationType::Error => write!(f, "error"),
             NotificationType::Warn => write!(f, "warn"),
-            NotificationType::Custom(s) => write!(f, "{}", s)
+            NotificationType::Custom(s) => write!(f, "{}", s),
         }
     }
 }
@@ -45,15 +46,20 @@ pub struct Notification {
     #[serde(rename = "type")]
     pub _type: NotificationType,
     pub title: String,
-    pub text: Option<String>
+    pub text: Option<String>,
 }
 impl Notification {
     pub fn new(typ: NotificationType, title: String, text: Option<String>) -> Self {
-        Self { _type: typ, title, text }
+        Self {
+            _type: typ,
+            title,
+            text,
+        }
     }
 
     pub fn send(self, app: &AppHandle) {
-        app.emit("notify", self).expect("failed to send notification");
+        app.emit("notify", self)
+            .expect("failed to send notification");
     }
 }
 

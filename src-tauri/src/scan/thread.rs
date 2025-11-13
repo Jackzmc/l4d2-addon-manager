@@ -1,8 +1,11 @@
 use crate::modules::store::AddonStorageContainer;
-use crate::scan::helpers::{get_vpks_in_dir, get_workshop_folder_ws_ids};
-use crate::scan::worker::{async_process_file, scan_worker_thread, scan_workshop_thread, AddonFileData, ProcessResult, WorkerTask};
-use crate::scan::{ScanCounter, ScanSpeed};
 use crate::scan::ScanState;
+use crate::scan::helpers::{get_vpks_in_dir, get_workshop_folder_ws_ids};
+use crate::scan::worker::{
+    AddonFileData, ProcessResult, WorkerTask, async_process_file, scan_worker_thread,
+    scan_workshop_thread,
+};
+use crate::scan::{ScanCounter, ScanSpeed};
 use log::error;
 use log::info;
 use log::trace;
@@ -10,15 +13,21 @@ use log::{debug, warn};
 use rand::random;
 use std::collections::VecDeque;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
 use std::time::Instant;
 use tauri::AppHandle;
 use tauri::Emitter;
 
 /// Main thread that starts and manages thread
-pub(super) async fn scan_main(path: PathBuf, speed: ScanSpeed, running_signal: Arc<AtomicBool>, addons: AddonStorageContainer, app: AppHandle) {
+pub(super) async fn scan_main(
+    path: PathBuf,
+    speed: ScanSpeed,
+    running_signal: Arc<AtomicBool>,
+    addons: AddonStorageContainer,
+    app: AppHandle,
+) {
     let threads = speed.threads();
     let mut counter = ScanCounter::default();
     app.emit("scan_state", ScanState::Started).ok();
@@ -35,10 +44,16 @@ pub(super) async fn scan_main(path: PathBuf, speed: ScanSpeed, running_signal: A
     }
 
     // Fetch addons and start worker threads
-    let scan_tasks: Vec<WorkerTask> = get_vpks_in_dir(&path).expect("failed to scan dir").into_iter().map(|path| WorkerTask::ScanFile(path)).collect();
+    let scan_tasks: Vec<WorkerTask> = get_vpks_in_dir(&path)
+        .expect("failed to scan dir")
+        .into_iter()
+        .map(|path| WorkerTask::ScanFile(path))
+        .collect();
     debug!("scan_main: got {} files to scan", scan_tasks.len());
     // queue being empty signals threads to end
-    let queue = Arc::new(tokio::sync::Mutex::new(VecDeque::<WorkerTask>::from(scan_tasks)));
+    let queue = Arc::new(tokio::sync::Mutex::new(VecDeque::<WorkerTask>::from(
+        scan_tasks,
+    )));
     let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AddonFileData, String>>(60);
     // let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Result<AddonFileData, String>>();
 
@@ -75,7 +90,7 @@ pub(super) async fn scan_main(path: PathBuf, speed: ScanSpeed, running_signal: A
                                 workshop_ids.push(ws_id);
                             }
                         }
-                    },
+                    }
                     Ok((ProcessResult::UpdatedByHash, _)) => {
                         counter.updated += 1;
                     }
@@ -84,7 +99,7 @@ pub(super) async fn scan_main(path: PathBuf, speed: ScanSpeed, running_signal: A
                         error!("process_file: {}", err);
                     }
                 }
-            },
+            }
             Err(err) => {
                 warn!("scan_file: {}", err);
             }
@@ -102,33 +117,50 @@ pub(super) async fn scan_main(path: PathBuf, speed: ScanSpeed, running_signal: A
     debug!("resolving workshop folder addons");
     let workshop_folder_ids = get_workshop_folder_ws_ids(&path);
     // merge any missing workshop folder ids to queue
-    workshop_ids.extend(workshop_folder_ids.iter().filter(|id| !existing_ws_ids.contains(id)));
-    let workshop_items = std::thread::spawn(|| scan_workshop_thread(workshop_ids)).join().expect("workshop thread panicked");
+    workshop_ids.extend(
+        workshop_folder_ids
+            .iter()
+            .filter(|id| !existing_ws_ids.contains(id)),
+    );
+    let workshop_items = std::thread::spawn(|| scan_workshop_thread(workshop_ids))
+        .join()
+        .expect("workshop thread panicked");
 
     let addons = addons.lock().await;
     debug!("adding {} workshop items", workshop_items.len());
-    addons.add_workshop_items(workshop_items).await.expect("failed to add workshop items");
+    addons
+        .add_workshop_items(workshop_items)
+        .await
+        .expect("failed to add workshop items");
     debug!("marking {} workshop ids", workshop_folder_ids.len());
-    addons.mark_workshop_ids(workshop_folder_ids).await.expect("failed to mark workshop ids"); // this should be after add_workshop_items, need items to exist first
+    addons
+        .mark_workshop_ids(workshop_folder_ids)
+        .await
+        .expect("failed to mark workshop ids"); // this should be after add_workshop_items, need items to exist first
     debug!("marking any missing files");
-    addons.scan_mark_missing(scan_id).await.expect("failed to mark missing files");
+    addons
+        .scan_mark_missing(scan_id)
+        .await
+        .expect("failed to mark missing files");
 
     info!("all tasks done");
 
-    app.emit("scan_state", ScanState::Complete {
-        time: now.elapsed().as_secs(),
-        total: counter.total,
-        added: counter.added,
-        updated: counter.updated,
-        failed: counter.errors
-    }).ok();
+    app.emit(
+        "scan_state",
+        ScanState::Complete {
+            time: now.elapsed().as_secs(),
+            total: counter.total,
+            added: counter.added,
+            updated: counter.updated,
+            failed: counter.errors,
+        },
+    )
+    .ok();
 
     info!("====== SCAN COMPLETE ======");
-    info!("{} addons scanned, {} added, {} updated, {} failed",
-        counter.total,
-        counter.added,
-        counter.updated,
-        counter.errors,
+    info!(
+        "{} addons scanned, {} added, {} updated, {} failed",
+        counter.total, counter.added, counter.updated, counter.errors,
     );
     info!("Duration: {} seconds", now.elapsed().as_secs());
     info!("===========================");
