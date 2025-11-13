@@ -64,7 +64,7 @@ pub fn run() {
             app.manage(db.clone());
 
             let scanner =
-                std::sync::Mutex::new(AddonScanner::new(db.clone(), app.handle().clone()));
+                tokio::sync::Mutex::new(AddonScanner::new(db.clone(), app.handle().clone()));
             app.manage(scanner);
 
             Ok(())

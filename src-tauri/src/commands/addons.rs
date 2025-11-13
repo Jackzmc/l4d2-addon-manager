@@ -50,7 +50,7 @@ pub async fn addons_start_scan(
             .clone()
             .ok_or_else(|| "no addon folder configured".to_string())?
     };
-    let mut scanner = scanner.lock().unwrap();
+    let mut scanner = scanner.lock().await;
     match scanner.start(addons_folder, speed.unwrap_or_default()) {
         true => Ok(()),
         false => Err("A scan is already in progress".to_string()),
@@ -62,8 +62,8 @@ pub async fn addons_abort_scan(
     scanner: State<'_, ScannerContainer>,
     reason: Option<String>,
 ) -> Result<(), String> {
-    let mut scanner = scanner.lock().unwrap();
-    scanner.abort(reason);
+    let mut scanner = scanner.lock().await;
+    scanner.abort(reason).await;
     Ok(())
 }
 

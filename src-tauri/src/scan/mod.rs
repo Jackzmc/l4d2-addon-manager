@@ -8,13 +8,13 @@ use sqlx::__rt::timeout;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 use tauri::AppHandle;
 use tauri::Emitter;
 use tauri::async_runtime::block_on;
+use tokio::sync::Mutex;
 
 mod helpers;
 mod thread;
@@ -141,7 +141,7 @@ impl AddonScanner {
         )));
         true
     }
-    pub fn abort(&mut self, mut reason: Option<String>) {
+    pub async fn abort(&mut self, mut reason: Option<String>) {
         if !self.check_running() {
             return;
         } // ignore if not running
@@ -150,21 +150,20 @@ impl AddonScanner {
         self.running_signal.store(false, Ordering::SeqCst);
         // wait for thread to end
         // let main_task = self.scan_main_task.take().unwrap();
-        block_on(async {
-            let abort_timed = timeout(
-                Duration::from_secs(SCAN_ABORT_TIMEOUT_SEC),
-                self.scan_main_task.take().unwrap(),
-            )
-            .await
-            .is_err();
-            if abort_timed {
-                reason = reason.map(|reason| format!("{} (timed out)", reason));
-            }
-            info!("Scan aborted for \"{:?}\"", reason);
-            self.app
-                .emit("scan_state", ScanState::Aborted { reason })
-                .ok();
-        })
+        // FIXME: cant abort block_on not allowed in current thread
+        let abort_timed = timeout(
+            Duration::from_secs(SCAN_ABORT_TIMEOUT_SEC),
+            self.scan_main_task.take().unwrap(),
+        )
+        .await
+        .is_err();
+        if abort_timed {
+            reason = reason.map(|reason| format!("{} (timed out)", reason));
+        }
+        info!("Scan aborted for \"{:?}\"", reason);
+        self.app
+            .emit("scan_state", ScanState::Aborted { reason })
+            .ok();
     }
 
     /// Is a scan running

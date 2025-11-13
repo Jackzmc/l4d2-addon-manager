@@ -60,7 +60,7 @@ pub async fn set_game_folder(
     // Start a scan at full speed if this is the first time
     if is_first_time {
         info!("First time setup, starting maximum scan");
-        let mut scanner = scanner.lock().unwrap();
+        let mut scanner = scanner.lock().await;
         scanner.start(path, ScanSpeed::Maximum);
     }
     cfg.save();
