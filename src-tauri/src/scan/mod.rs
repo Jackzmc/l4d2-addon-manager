@@ -59,13 +59,14 @@ pub struct AddonScanner {
 }
 
 #[derive(Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
 pub enum ScanSpeed {
     /// Uses all threads
-    Maximum = 0,
+    Maximum,
     /// Uses half of threads
-    Normal = 1,
+    Normal,
     /// Uses one thread
-    Background = 2
+    Background
 }
 
 impl Display for ScanSpeed {

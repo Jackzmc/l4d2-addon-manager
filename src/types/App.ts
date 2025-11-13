@@ -74,7 +74,7 @@ export interface LogEntry {
 }
 
 export const enum ScanSpeed {
-    Maximum,
-    Normal = 1,
-    Background = 2
+    Maximum = "maximum",
+    Normal = "normal",
+    Background = "background"
 } 
