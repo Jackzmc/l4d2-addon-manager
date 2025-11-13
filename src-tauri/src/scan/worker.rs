@@ -49,10 +49,12 @@ pub enum WorkerTask {
 /// Ends when queue is empty
 pub fn scan_worker_thread(i: u8, tx: tokio::sync::mpsc::Sender<Result<AddonFileData, String>>, queue: Arc<tokio::sync::Mutex<VecDeque<WorkerTask>>>) -> std::io::Result<()> {
     loop {
+        trace!("[worker{i}] waiting for task");
         let task = {
             let mut queue = queue.blocking_lock();
             queue.pop_front()
         };
+        trace!("[worker{i}] got task (is empty = {})", task.is_none());
         match task {
             Some(WorkerTask::ScanFile(path)) => {
                 let time = Instant::now();
@@ -60,6 +62,7 @@ pub fn scan_worker_thread(i: u8, tx: tokio::sync::mpsc::Sender<Result<AddonFileD
                     Ok(res) => {
                         trace!("[worker{i}] scan_file \"{}\" hash \"{}\" took {}ms", &res.filename, &res.hash, time.elapsed().as_millis());
                         tx.blocking_send(Ok(res)).expect("failed to send result");
+                        trace!("[worker{i}] sent result");
                     },
                     Err(e) => {
                         warn!("[worker{i}] scan_file failed: {}", e);
