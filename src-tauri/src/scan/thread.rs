@@ -39,7 +39,8 @@ pub(super) async fn scan_main(path: PathBuf, speed: ScanSpeed, running_signal: A
     debug!("scan_main: got {} files to scan", scan_tasks.len());
     // queue being empty signals threads to end
     let queue = Arc::new(tokio::sync::Mutex::new(VecDeque::<WorkerTask>::from(scan_tasks)));
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AddonFileData, String>>(12);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AddonFileData, String>>(60);
+    // let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Result<AddonFileData, String>>();
 
     debug!("starting {} worker threads", threads);
     for i in 0..threads {
