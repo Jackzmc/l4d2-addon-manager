@@ -152,3 +152,10 @@ export async function uploadLogs(): Promise<string> {
     return await tryInvoke("upload_logs")
 }
 
+export async function addTag(entryId: string, tag: string) {
+    return await tryInvoke("addons_tag_add", { id: entryId, tag })
+}
+
+export async function removeTag(entryId: string, tag: string) {
+    return await tryInvoke("addons_tag_del", { id: entryId, tag })
+}

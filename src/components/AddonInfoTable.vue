@@ -10,14 +10,16 @@
         <tr>
             <td><b>State</b></td>
             <td v-if="props.entry.enabled">️✅ Enabled</td>
-            <td v-else-if="props.entry.enabled === false">❌ Disabled</td>
+            <td v-else-if="// noinspection PointlessBooleanExpressionJS props.entry.enabled === false">❌ Disabled</td>
             <td v-else><em>Unknown</em></td>
         </tr>
         <tr>
             <td><b>Filename</b></td>
-            <td v-if="props.entry.info.filename">{{ props.entry.info.filename }}</td>
+            <td v-if="props.entry.info.filename">
+                <code>{{ props.entry.info.filename }}</code>
+            </td>
             <td v-else class="has-text-danger">
-                Missing
+                Missing <em>(cannot find file, was it renamed or deleted?)</em>
                 <!-- <a>(Select file)</a> -->
             </td>
         </tr>
@@ -64,16 +66,16 @@
         <tr>
             <td><b>My Tags</b></td>
             <td>
-                <em>In future versions</em>
-                <!-- <div class="tags">
-                    <span class="tag" v-for="tag in props.entry.tags" :key="tag">{{ tag }}</span>
-                </div> -->
+                <div class="tags mb-2" v-if="!workshop">
+                    <span class="tag" v-for="tag in props.entry.tags" :key="tag">tag:{{ tag }}</span>
+                    <span class="button is-link is-small" @click="onAddTagPressed">+ Add Tag</span>
+                </div>
             </td>
         </tr>
         <tr>
             <td><b>Workshop ID</b></td>
             <td v-if="props.entry.info.workshop_id">
-                {{ props.entry.info.workshop_id}}
+                <code>{{ props.entry.info.workshop_id}}</code>
                 <a :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + props.entry.info.workshop_id" target="_blank">
                     (View on Steam Workshop)
                 </a>
@@ -84,13 +86,15 @@
 </table>
 </template>
 
-
 <script setup lang="ts">
 import { computed } from 'vue';
 import { formatSize } from '../js/utils.ts';
 import { AddonEntry } from '../types/Addon.ts';
 import { getRelDate } from '../js/utils';
 import { getAddonContents } from '../js/app.ts';
+import { addTag } from '../js/tauri.ts';
+
+const emit = defineEmits(["refresh"])
 
 const props = defineProps<{
     entry: AddonEntry,
@@ -112,4 +116,12 @@ const updatedAtRel = computed(() => {
 const flags = computed(() => {
     return getAddonContents(props.entry.info.flags)
 })
+
+async function onAddTagPressed() {
+    const tagValue = prompt("Enter tag")
+    if(tagValue) {
+        await addTag(props.entry.id, tagValue)
+        emit("refresh")
+    }
+}
 </script>

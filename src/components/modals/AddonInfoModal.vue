@@ -1,12 +1,12 @@
 import { AddonEntry } from '../../types/Addon';
 <template>
-<ModalCard :title="props.entry.info.title" active @close="emit('close')">
+<ModalCard :title="props.entry.info.title" active @close="emit('close')" @refresh="refresh">
     <AddonInfoTable :entry="entry" />
     <template #footer>
         <div class="buttons" v-if="props.entry.info.filename">
             <!-- <button class="button" @click="selectedEntry = null">Close</button> -->
             <button v-if="props.entry.enabled" @click="onSetState(false)" class="button is-link  is-outlined">Disable Addon</button>
-            <button v-else-if="props.entry.enabled === false" @click="onSetState(true)" class="button is-link">Enable Addon</button>
+            <button v-else-if="// noinspection PointlessBooleanExpressionJS props.entry.enabled === false" @click="onSetState(true)" class="button is-link">Enable Addon</button>
             <button @click="onDeletePressed" class="button is-danger is-outlined">Delete</button>
         </div>
         <span v-else>
@@ -19,7 +19,7 @@ import { AddonEntry } from '../../types/Addon';
 
 <script setup lang="ts">
 import { confirm } from '@tauri-apps/plugin-dialog';
-import { deleteAddons, setAddonState } from '../../js/tauri.ts';
+import { deleteAddons, setAddonState } from '@/js/tauri.ts';
 import { AddonEntry } from '../../types/Addon.ts';
 import AddonInfoTable from '../AddonInfoTable.vue';
 import ModalCard from '../ModalCard.vue';
@@ -42,6 +42,10 @@ async function onDeletePressed() {
         emit("close")
     }
 
+}
+
+async function refresh() {
+    emit("refresh")
 }
 
 </script>

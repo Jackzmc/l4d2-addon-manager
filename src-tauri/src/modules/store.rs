@@ -12,6 +12,7 @@ use std::fmt::{Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
+use hex::FromHexError;
 use steam_workshop_api::WorkshopItem;
 use tauri::async_runtime::Mutex;
 
@@ -49,6 +50,12 @@ pub struct FileHash(pub Vec<u8>);
 impl Display for FileHash {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(&hex::encode(&self.0))
+    }
+}
+
+impl FileHash {
+    pub fn from_str(s: &str) -> Result<Self, FromHexError> {
+        hex::decode(s).map(FileHash)
     }
 }
 
@@ -386,6 +393,25 @@ impl AddonStorage {
         }
         query.execute(&self.pool).await?;
         Ok(())
+    }
+
+    pub async fn add_tag(&self, hash: FileHash, tag: String) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO addon_tags (hash, tag) VALUES (?, ?)",
+            hash, tag
+        )
+            .execute(&self.pool).await
+            .map(|_| ())
+
+    }
+
+    pub async fn del_tag(&self, hash: FileHash, tag: String) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "DELETE FROM addon_tags WHERE hash = ? AND tag = ?",
+            hash, tag
+        )
+            .execute(&self.pool).await
+            .map(|_| ())
     }
 
     /// Wipes all data from database

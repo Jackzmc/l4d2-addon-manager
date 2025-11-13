@@ -88,6 +88,8 @@ pub fn run() {
             cmd_addons::addons_unsubscribe,
             cmd_addons::addons_set_state,
             cmd_addons::addons_delete,
+            cmd_addons::addons_tag_add,
+            cmd_addons::addons_tag_del,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

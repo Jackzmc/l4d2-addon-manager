@@ -1,5 +1,5 @@
 use crate::modules::cfg::AppConfigContainer;
-use crate::modules::store::{AddonEntry, AddonStorageContainer};
+use crate::modules::store::{AddonEntry, AddonStorageContainer, FileHash};
 use crate::scan::{ScanSpeed, ScannerContainer};
 use crate::util::get_addon_list;
 use l4d2_addon_parser::addon_list::AddonList;
@@ -238,4 +238,26 @@ pub async fn addons_delete(
         .await
         .map_err(|e| e.to_string())?;
     Ok(results)
+}
+
+#[tauri::command]
+pub async fn addons_tag_add(
+    addons: State<'_, AddonStorageContainer>,
+    id: String,
+    tag: String
+) -> Result<(), String> {
+    let hash = FileHash::from_str(&id).map_err(|e| format!("bad id: {}", e))?;
+    let addons = addons.lock().await;
+    addons.add_tag(hash, tag).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn addons_tag_del(
+    addons: State<'_, AddonStorageContainer>,
+    id: String,
+    tag: String
+) -> Result<(), String> {
+    let hash = FileHash::from_str(&id).map_err(|e| format!("bad id: {}", e))?;
+    let addons = addons.lock().await;
+    addons.del_tag(hash, tag).await.map_err(|e| e.to_string())
 }
