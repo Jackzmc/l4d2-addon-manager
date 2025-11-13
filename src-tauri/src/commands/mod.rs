@@ -8,10 +8,12 @@ use std::fs::{File};
 use std::io::{BufRead};
 use std::path::{PathBuf};
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_opener::OpenerExt;
 use crate::modules::export::export_app;
 
 pub mod config;
 pub mod addons;
+pub mod logs;
 
 #[derive(Serialize)]
 pub struct InitData {
@@ -43,20 +45,6 @@ pub async fn init(config: State<'_, AppConfigContainer>, data: State<'_, StaticD
     })
 }
 
-#[derive(Serialize)]
-pub struct LogEntry {
-    message: String
-}
-#[tauri::command]
-pub async fn get_logs(app: AppHandle) -> Result<Vec<LogEntry>, String> {
-    let logs_path = app.path().app_local_data_dir().unwrap().join("logs").join(format!("{}.log", env!("CARGO_PKG_NAME")));
-    debug!("logs_path = {:?}", logs_path);
-    let file = File::open(logs_path).map_err(|e| e.to_string())?;
-    let buff = std::io::BufReader::new(file);
-    Ok(buff.lines().map(|l| LogEntry { message: l.unwrap() }).collect())
-}
-
-
 // TODO: move all this to export module, with proper multithreading for with_addons
 #[tauri::command]
 pub async fn export(app: AppHandle, data: State<'_, StaticData>, config: State<'_, AppConfigContainer>, with_addons: bool) -> Result<PathBuf, String> {
@@ -65,7 +53,12 @@ pub async fn export(app: AppHandle, data: State<'_, StaticData>, config: State<'
         let cfg = config.lock().await;
         cfg.addons_folder.as_ref().map(|p| p.clone())
     } else { None };
-    tokio::task::spawn_blocking(move || export_app(app, app_version, addons_folder)).await.unwrap()
+    let export_path = {
+        let app = app.clone();
+        tokio::task::spawn_blocking(move || export_app(app, app_version, addons_folder)).await.unwrap()?
+    };
+    app.opener().open_path(export_path.to_string_lossy().to_string(), None::<&str>).unwrap();
+    Ok(export_path)
 }
 #[tauri::command]
 pub async fn clear_database(addons: State<'_, AddonStorageContainer>, app: AppHandle) -> Result<(), String> {
