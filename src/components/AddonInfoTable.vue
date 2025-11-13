@@ -4,7 +4,7 @@
         <tr>
             <td style="vertical-align: middle"><b>State</b></td>
             <td v-if="props.entry.enabled" class="">
-                <span class="tag is-success is-medium has-text-white is-clickable has-tooltip-bottom has-tooltip-danger" 
+                <span class="tag is-success has-text-white is-clickable has-tooltip-bottom has-tooltip-danger" 
                     data-tooltip="Click to disable addon"
                     @click="emit('set-state', true)"
                 >
@@ -12,7 +12,7 @@
                 </span>
             </td>
             <td v-else-if="props.entry.enabled === false">
-                <span class="tag is-danger is-medium has-text-white is-clickable has-tooltip-bottom has-tooltip-success" 
+                <span class="tag is-danger has-text-white is-clickable has-tooltip-bottom has-tooltip-success" 
                     data-tooltip="Click to enable addon"
                     @click="emit('set-state', true)"
                 >
@@ -32,6 +32,14 @@
             </td>
         </tr>
         <tr>
+            <td><b>Author</b></td>
+            <td>{{ props.entry.info.author }}</td>
+        </tr>
+        <tr>
+            <td><b>Version</b></td>
+            <td>{{ props.entry.info.version }}</td>
+        </tr>
+        <tr>
             <td><b>Created</b></td>
             <td>{{ createdAt.toLocaleString() }} <em>({{ createdAtRel }})</em></td>
         </tr>
@@ -42,18 +50,6 @@
         <tr>
             <td><b>File Size</b></td>
             <td>{{ formatSize(props.entry.info.file_size) }}</td>
-        </tr>
-        <tr>
-            <td><b>Author</b></td>
-            <td>{{ props.entry.info.author }}</td>
-        </tr>
-        <tr>
-            <td><b>Version</b></td>
-            <td>{{ props.entry.info.version }}</td>
-        </tr>
-        <tr v-if="!workshop">
-            <td><b>SHA256 Hash</b></td>
-            <td>{{ props.entry.id }}</td>
         </tr>
         <tr v-if="props.entry.info.chapter_ids">
             <td><b>Chapter Ids</b></td>
@@ -84,11 +80,17 @@
             <td><b>Workshop ID</b></td>
             <td v-if="props.entry.info.workshop_id">
                 <code>{{ props.entry.info.workshop_id}}</code>
-                <a :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + props.entry.info.workshop_id" target="_blank">
-                    (View on Steam Workshop)
+                <a class="tag is-link is-medium ml-3 has-tooltip-link" data-tooltip="Open steam workshop page (in main browser)"
+                    :href="'https://steamcommunity.com/sharedfiles/filedetails/?id=' + props.entry.info.workshop_id" target="_blank"
+                >
+                    <Icon icon="open-new-window" text-left="Steam Workshop"></Icon>
                 </a>
             </td>
             <td v-else><em>not set</em> <!--<a>(Click to set)</a>--></td>
+        </tr>
+        <tr v-if="!workshop">
+            <td><b>SHA256 Hash</b></td>
+            <td><code>{{ props.entry.id }}</code></td>
         </tr>
     </tbody>
 </table>

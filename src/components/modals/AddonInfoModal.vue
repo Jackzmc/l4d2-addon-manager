@@ -4,9 +4,15 @@
     <template #footer>
         <div class="buttons" v-if="props.entry.info.filename">
             <!-- <button class="button" @click="selectedEntry = null">Close</button> -->
-            <button v-if="props.entry.enabled" @click="onSetState(false)" class="button is-link  is-outlined">Disable Addon</button>
-            <button v-else-if="props.entry.enabled === false" @click="onSetState(true)" class="button is-link">Enable Addon</button>
-            <button @click="onDeletePressed" class="button is-danger is-outlined">Delete</button>
+            <button v-if="props.entry.enabled" @click="onSetState(false)" class="button is-link  is-outlined">
+                <Icon icon="xmark-circle">Disable Addon</Icon>
+            </button>
+            <button v-else-if="props.entry.enabled === false" @click="onSetState(true)" class="button is-link">
+                <Icon icon="check-circle">Enable Addon</Icon>
+            </button>
+            <button @click="onDeletePressed" class="button is-danger is-outlined">
+                <Icon icon="trash">Delete</Icon>
+            </button>
         </div>
         <span v-else>
             File has been moved or deleted, no actions available
@@ -22,6 +28,7 @@ import { deleteAddons, setAddonState } from '@/js/tauri.ts';
 import { AddonEntry } from '../../types/Addon.ts';
 import AddonInfoTable from '../AddonInfoTable.vue';
 import ModalCard from '../ModalCard.vue';
+import Icon from '../Icon.vue';
 
 const emit = defineEmits(["close", "refresh", "set-state", "delete"])
 
