@@ -5,10 +5,10 @@
         <div class="buttons" v-if="props.entry.info.filename">
             <!-- <button class="button" @click="selectedEntry = null">Close</button> -->
             <button v-if="props.entry.enabled" @click="onSetState(false)" class="button is-link  is-outlined">
-                <Icon icon="xmark-circle">Disable Addon</Icon>
+                <Icon icon="xmark-circle">Click to Disable</Icon>
             </button>
             <button v-else-if="props.entry.enabled === false" @click="onSetState(true)" class="button is-link">
-                <Icon icon="check-circle">Enable Addon</Icon>
+                <Icon icon="check-circle">Click to Enable</Icon>
             </button>
             <button @click="onDeletePressed" class="button is-danger is-outlined">
                 <Icon icon="trash">Delete</Icon>

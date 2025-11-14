@@ -1,27 +1,34 @@
 <template>
+<div>
     <div class="columns is-gapless" style="height: 100%">
         <div class="column is-one-fifth" >
-            <Sidebar @scan="onScanRequest" :scan-active="isScanActive" :app-data="staticData" :counts="counts" />
+            <Sidebar @scan="onScanRequest" :scan-state="scanState" :app-data="staticData" :counts="counts" />
         </div>
         <main class="column mt-0 section-component" >
             <router-view v-slot="{ Component }">
                 <Transition>
                     <keep-alive include="Logs">
-                            <component ref="view" :is="Component" :config="config" />
+                            <component ref="view" :is="Component" :config="config" :static-data="staticData" />
                     </keep-alive>
                 </Transition>
             </router-view>
         </main>
     </div>
+    <progress v-if="scanState != ScanState.Inactive" :class="['mt-6 progress scan is-small mb-0',{'is-info': scanState === ScanState.Running, 'is-warning': scanState === ScanState.Cancelling}]" style="border-radius: 0;" :value="scanProgress?.processed" :max="scanProgress?.items">
+
+    </progress>
+</div>
 </template>
 
 <script setup lang="ts">
 import Sidebar from '@/components/Sidebar.vue'
 import { notify } from '@kyvg/vue3-notification';
 import { onMounted, ref, Transition } from 'vue';
-import { AddonCounts, AppConfig, ScanResultEvent, ScanResultMessage, ScanSpeed, ScanStateEvent, StaticAppData } from '../types/App.ts';
+import { ScanSpeed, ScanState, ScanStateEvent } from '../types/Scan.ts';
+import { AddonCounts, AppConfig, StaticAppData } from '../types/App.ts'
 import { listen } from '@tauri-apps/api/event';
 import { abortScan, countAddons, startScan } from '../js/tauri.ts';
+import { ScanProgress } from '../types/Scan.ts';
 
 // Is slow, 1s / addon, so run it infrequently
 const BACKGROUND_SCAN_INTERVAL = 1000 * 60 * 60 * 1 // every day?
@@ -32,7 +39,8 @@ const props = defineProps<{
 }>()
 
 const view = ref()
-const isScanActive = ref(false)
+const scanState = ref<ScanState>(ScanState.Inactive)
+const scanProgress = ref<ScanProgress|null>(null)
 const counts = ref<AddonCounts>({ addons: 0, workshop: 0 })
 
 // tell child to refresh, if they can
@@ -44,10 +52,16 @@ async function triggerPageRefresh() {
 }
 
 async function onScanRequest() {
-    if(isScanActive.value) {
-        await abortScan("requested by user")
-    } else {
-        await startScan()
+    switch(scanState.value) {
+        case ScanState.Inactive:
+            await startScan()
+            break
+        case ScanState.Running:
+            scanState.value = ScanState.Cancelling
+            scanProgress.value = null
+            await abortScan("requested by user")
+            scanState.value = ScanState.Inactive
+            break
     }
 }
 
@@ -61,14 +75,14 @@ onMounted(async() => {
                 title: `Scan started`,
                 text: "Scan has started in the background"
             })
-            isScanActive.value = true
+            scanState.value = ScanState.Running
         } else if(event.payload.state === "aborted") {
             notify({
                 type: "warn",
                 title: `Scan cancelled`,
                 text: `Reason: ${event.payload.reason ?? "(None)"}`
             })
-            isScanActive.value = false
+            scanState.value = ScanState.Inactive
         } else if(event.payload.state === "complete") {
             const type = event.payload.failed > 0 ? "warn" : "success"
             notify({
@@ -77,19 +91,16 @@ onMounted(async() => {
                 text: `${event.payload.total} files scanned, ${event.payload.added} new addons found, ${event.payload.failed} errors\nSee logs for details`
             })
             triggerPageRefresh()
-            isScanActive.value = false
+            scanState.value = ScanState.Inactive
         }
+        scanProgress.value = null
     })
 
-    await listen<ScanResultEvent>("scan_result", (event) => {
-        const data = ScanResultMessage[event.payload.result]
-        if(data) {
-            notify({
-                type: "info",
-                title: data.title,
-                text: event.payload.filename
-            })
-        }
+    await listen<ScanProgress>("scan_progress", (event) => {
+        // Don't set any progress if we cancelling, want to show the intermediate bar
+        if(scanState.value != ScanState.Cancelling)
+            scanProgress.value = event.payload
+        console.debug("scan_progress", event.payload)
     })
 
     // Start initial scan
@@ -103,5 +114,9 @@ onMounted(async() => {
 .section-component {
   /* height: 720px !important; */
   overflow: auto !important;
+}
+.progress.scan {
+  position: fixed;
+  bottom: 0;
 }
 </style>

@@ -1,13 +1,12 @@
 import { createMemoryHistory, createRouter, createWebHashHistory } from 'vue-router'
 
-import Setup from '../pages/Setup.vue'
 import MainView from '../components/MainView.vue'
 import Loading from '../pages/Loading.vue'
 import LogsPage from '@/pages/Logs.vue'
 
 const routes = [
   { path: '/', component: Loading },
-  { path: '/setup', component: Setup, name: "setup" },
+  { path: '/setup', component: () => import('../pages/Setup.vue'), name: "setup" },
   { 
     path: '/app', 
     component: MainView,
@@ -17,6 +16,7 @@ const routes = [
       { name: "settings", path: 'settings',  component: () => import('@/pages/Settings.vue')  },
       { name: "export", path: 'export',  component: () => import('@/pages/Export.vue')  },
       { name: "logs", path: 'logs',  component: LogsPage  },
+      { name: "about", path: 'about',  component: () => import('@/pages/About.vue')  },
     ]
   }
 ]

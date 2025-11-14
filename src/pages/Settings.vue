@@ -21,7 +21,32 @@
                 <button type="submit" class="button is-link" :disabled="canSave ? undefined : true">Save Changes</button>
             </Field>
         </form>
+
         <br><br>
+
+        <h4 class="title is-4">
+            <IconVue class="icon" :inline="true" icon="iconoir:switch-off" />
+            Preferences (not implemented)
+        </h4>
+        <p class="subtitle is-5">Changes saved automatically</p>
+        <form @submit.prevent="save" class="box has-background-info-light">
+            <Field>
+                <label class="checkbox large">
+                    <input type="checkbox" class="checkbox large">
+                    Start scan on startup
+                </label>
+            </Field>
+            <Field>
+                <label class="checkbox large">
+                    <input type="checkbox" class="checkbox large">
+                    Enable Telemetry
+                </label>
+                <p class="help">This will send OS, OS version, app version, and number of addons</p>
+            </Field>
+        </form>
+
+        <br><br>
+
         <h4 class="title is-4">
             <IconVue class="icon" :inline="true" icon="iconoir:warning-triangle" />
             Danger Zone

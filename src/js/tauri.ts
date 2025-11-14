@@ -1,8 +1,9 @@
 import { invoke, InvokeArgs, InvokeOptions } from '@tauri-apps/api/core'
 import { AddonEntry } from '../types/Addon.ts';
 import { notify } from '@kyvg/vue3-notification';
-import { AddonCounts, AppConfig, InitAppData, ItemResult, LogEntry, ScanSpeed } from '../types/App.ts';
+import { AddonCounts, AppConfig, InitAppData, ItemResult, LogEntry } from '../types/App.ts';
 import { handleItemResults } from './app.ts';
+import { ScanSpeed } from '../types/Scan.ts';
 
 async function tryInvoke<T>(cmd: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
     try {

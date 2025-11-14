@@ -1,7 +1,6 @@
 <template>
   <notifications position="bottom right" :duration="5000" />
   <router-view @init="onInit" :static-data="staticData" :config="configData" />
-
 </template>
 
 <script setup lang="ts">
@@ -26,7 +25,6 @@ onMounted(async() => {
 
 <style>
 html, body, #app {
-  overflow-y: hidden !important;
   background-color: rgba(255, 255, 255, 0.667);
   height: 100%;
 }

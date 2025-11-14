@@ -12,12 +12,14 @@
     <div class="panel-block">
         <br>
     </div>
-    <a class="panel-block" @click="emit('scan')">
-        <Icon v-if="props.scanActive"icon="xmark-circle" class="has-text-danger has-tooltip-right has-tooltip-danger" 
-            data-tooltip="Cancel the currently running scan (may take a few moments)">
-            Cancel Scan
-        </Icon>
-        <Icon v-else icon="page-search" >Start Scan</Icon> 
+    <a v-if="scanState === ScanState.Running" class="panel-block has-text-danger has-tooltip-right has-tooltip-danger" @click="emit('scan')" data-tooltip="Cancel the currently running scan (may take a few moments)">
+        <Icon icon="xmark-circle">Cancel Scan</Icon>
+    </a>
+    <a v-else-if="scanState === ScanState.Cancelling" class="panel-block has-text-warning" style="cursor: not-allowed">
+        <Icon icon="hourglass">Scan is stopping</Icon>
+    </a>
+    <a v-else class="panel-block" @click="emit('scan')">
+        <Icon icon="page-search">Start Scan</Icon> 
     </a>
     <router-link class="panel-block" :to="{ name: 'settings' }">
         <Icon icon="settings">Settings</Icon> 
@@ -28,10 +30,9 @@
     <router-link class="panel-block" :to="{ name: 'logs'}">
         <Icon icon="terminal">Logs</Icon>
     </router-link>
-    <!-- <a class="panel-block" @click="checkForUpdates">
-        Check for Updates
-    </a> -->
-
+    <router-link class="panel-block" :to="{ name: 'about'}">
+        <Icon icon="info-circle">About</Icon>
+    </router-link>
     <footer v-if="appData">
         v{{ appData.app_version }}
         <template v-if="appData.git_commit">
@@ -74,15 +75,17 @@ import { check } from '@tauri-apps/plugin-updater';
 import { notify } from '@kyvg/vue3-notification';
 import { onMounted, ref } from 'vue';
 import Icon from './Icon.vue';
+import { ScanState } from '../types/Scan.ts';
 
 const props = defineProps<{
-    scanActive: boolean,
+    scanState: ScanState,
     appData: StaticAppData,
     counts: AddonCounts
 }>()
 const emit = defineEmits(["scan"])
 
 const size = ref([0, 0])
+const isCancelling = ref(false)
 
 async function checkForUpdates() {
     const update = await check();

@@ -3,8 +3,8 @@
     <span v-if="$slots.defaultLeft || textLeft" :class="textClass">
       <slot name="text-left">{{ textLeft }}</slot>
     </span>
-    <span :class="'icon ' + (iconClass ?? '')">
-      <Icon :inline="props.inline != undefined" :icon="computedIcon" />
+    <span :class="' ' + (iconClass ?? '')">
+      <Icon :inline="true" :icon="computedIcon" />
     </span>
     <span v-if="$slots.default || text" :class="textClass">
       <slot>{{ text }}</slot>

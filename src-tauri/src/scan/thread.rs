@@ -1,5 +1,5 @@
 use crate::modules::store::AddonStorageContainer;
-use crate::scan::ScanState;
+use crate::scan::{ScanProgress, ScanState};
 use crate::scan::helpers::{get_vpks_in_dir, get_workshop_folder_ws_ids};
 use crate::scan::worker::{
     AddonFileData, ProcessResult, WorkerTask, async_process_file, scan_worker_thread,
@@ -37,18 +37,20 @@ pub(super) async fn scan_main(
     info!("========================");
     let now = Instant::now();
 
-    // Allow aborting early right before we enter the main process loop
-    if !running_signal.load(Ordering::SeqCst) {
-        info!("Got early abort signal (1), ending");
-        return;
-    }
-
     // Fetch addons and start worker threads
     let scan_tasks: Vec<WorkerTask> = get_vpks_in_dir(&path)
         .expect("failed to scan dir")
         .into_iter()
         .map(|path| WorkerTask::ScanFile(path))
         .collect();
+    let items_to_scan = scan_tasks.len() as u32;
+
+    // Allow aborting early right before we enter the main process loop
+    if !running_signal.load(Ordering::SeqCst) {
+        info!("Got early abort signal (1), ending");
+        return;
+    }
+
     debug!("scan_main: got {} files to scan", scan_tasks.len());
     // queue being empty signals threads to end
     let queue = Arc::new(tokio::sync::Mutex::new(VecDeque::<WorkerTask>::from(
@@ -105,10 +107,13 @@ pub(super) async fn scan_main(
             }
         };
 
+        app.emit("scan_progress", ScanProgress { items: items_to_scan, processed: counter.total }).ok();
+
         // Check if we should abort
         if !running_signal.load(Ordering::SeqCst) {
             info!("Got abort signal in process loop, ending");
             queue.lock().await.clear(); // drain queue to signal worker threads to end
+            while let Some(_) = rx.recv().await {} // wait for all threads to end
             return;
         }
     }
