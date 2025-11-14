@@ -30,7 +30,7 @@ sqlx = { version = "0.9.0-alpha.1", features = ["sqlite", "json", "migrate", "ru
 bitflags = { version = "2.10.0", features = ["serde"] }
 chrono = { version = "0.4.42", features = ["serde"] }
 tokio = { version = "1.48.0", features = [] }
-l4d2_addon_parser = { version = "1.3.0"}
+l4d2_addon_parser = { git = "https://git.jackz.me/jackz/l4d2-addon-parser", version = "1.3.1"}
 steam-workshop-api = "0.7.0"
 regex = "1.12.2"
 zip = "5.1.1"

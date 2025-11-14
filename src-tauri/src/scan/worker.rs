@@ -79,7 +79,7 @@ pub fn scan_worker_thread(
                         trace!("[worker{i}] sent result");
                     }
                     Err(e) => {
-                        warn!("[worker{i}] scan_file failed: {}", e);
+                        warn!("[worker{i}] scan_file: {}", e);
                     }
                 }
             }

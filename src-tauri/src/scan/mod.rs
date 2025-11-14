@@ -1,5 +1,5 @@
 use crate::modules::store::AddonStorageContainer;
-use crate::scan::thread::scan_main;
+use crate::scan::main::scan_main;
 use crate::scan::worker::ProcessError;
 use log::debug;
 use log::info;
@@ -17,7 +17,7 @@ use tauri::async_runtime::block_on;
 use tokio::sync::Mutex;
 
 mod helpers;
-mod thread;
+mod main;
 mod worker;
 
 const SCAN_ABORT_TIMEOUT_SEC: u64 = 60;

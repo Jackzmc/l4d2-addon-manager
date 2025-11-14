@@ -2391,9 +2391,8 @@ dependencies = [
 
 [[package]]
 name = "l4d2_addon_parser"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23390dac6242d50f33d5666407d2b0a1f513063922fa452dddc23785a619d0c8"
+version = "1.3.1"
+source = "git+https://git.jackz.me/jackz/l4d2-addon-parser#06eed1975df7a6cbdc64729e8c756115a57f2ab8"
 dependencies = [
  "keyvalues-serde",
  "log",

@@ -62,7 +62,7 @@
     border: 1px solid lightgray;
 }
 .sidebar footer {
-    position: absolute;
+    position: fixed;
     bottom: 0;
     padding-left: 5px;
 }
