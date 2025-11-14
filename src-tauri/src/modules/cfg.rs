@@ -9,12 +9,14 @@ use tauri::async_runtime::Mutex;
 pub struct StaticData {
     pub app_version: String,
     pub git_commit: Option<String>,
+    pub is_prod: bool
 }
 impl StaticData {
     pub fn new(app: &tauri::App) -> Self {
         Self {
             app_version: app.package_info().version.to_string(),
             git_commit: option_env!("GIT_COMMIT").map(|s| s.to_string()),
+            is_prod: !cfg!(debug_assertions)
         }
     }
 }

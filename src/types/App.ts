@@ -16,7 +16,8 @@ export interface InitAppData {
 }
 export interface StaticAppData {
     app_version: string,
-    git_commit: string | null
+    git_commit: string | null,
+    is_prod: boolean
 }
 
 export interface AppConfig {

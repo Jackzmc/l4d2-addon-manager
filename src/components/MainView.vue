@@ -108,7 +108,7 @@ onMounted(async() => {
     })
 
     // Start initial scan
-    startScan(ScanSpeed.Background)
+    if(props.staticData.is_prod) startScan(ScanSpeed.Background)
     // Setup background scan, only runs on one thread
     setInterval(() => startScan(ScanSpeed.Background), BACKGROUND_SCAN_INTERVAL)
 })

@@ -2,7 +2,10 @@
 <div class="container has-text-centered mt-6">
     <div class="block">
         <h1 class="title is-1">L4D2 Addon Manager</h1>
-        <p class="subtitle is-2">Version {{ staticData.app_version }}</p>
+        <p class="subtitle is-2">Version {{ staticData.app_version }} <template v-if="bundleType">({{ bundleType }})</template></p>
+        <p>
+            Tauri v{{ tauriVersion }}
+        </p>
         <div class="block my-4">
             <nav class="level">
                 <p class="level-item has-text-centered">
@@ -18,16 +21,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { StaticAppData } from '../types/App.ts';
 import Button from '../components/Button.vue';
 import { notify } from '@kyvg/vue3-notification';
+import { BundleType, getBundleType, getTauriVersion } from '@tauri-apps/api/app';
 
 const isChecking = ref(false)
 
 const props = defineProps<{
     staticData: StaticAppData
 }>()
+
+const tauriVersion = ref<string>()
+const bundleType = ref<BundleType>()
 
 async function checkForUpdates() {
     isChecking.value = true
@@ -38,4 +45,9 @@ async function checkForUpdates() {
     })
     isChecking.value = false
 }
+
+onMounted(async() => {
+    bundleType.value = (await getBundleType())
+    tauriVersion.value = await getTauriVersion()
+})
 </script>
