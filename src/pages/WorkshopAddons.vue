@@ -1,6 +1,6 @@
 <template>
 <div>
-    <AddonList workshop :addons="addons" @refresh="refresh">
+    <AddonList workshop :addons="addons" @refresh="refresh" :default-sort="{ field: 'title', descending: false }">
         <template #select-buttons="{selected}">
             <button class="level-item button is-warning" @click="onMigratePressed(selected)">Move to managed addons</button>
             <button v-if="config.steam_apikey" class="level-item button is-link" @click="onUnsubscribePressed(selected)">Unsubscribe</button>

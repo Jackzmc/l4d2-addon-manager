@@ -1,10 +1,10 @@
 use crate::modules::cfg::AppConfigContainer;
-use crate::modules::store::{AddonEntry, AddonStorageContainer, FileHash};
+use crate::modules::store::{AddonEntry, AddonStorageContainer, FileHash, SelectedSort};
 use crate::scan::{ScanSpeed, ScannerContainer};
 use crate::util::get_addon_list;
 use l4d2_addon_parser::addon_list::AddonList;
 use log::{debug, error, info};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::__rt::spawn_blocking;
 use std::time::Duration;
 use tauri::State;
@@ -15,25 +15,28 @@ pub async fn addons_counts(addons: State<'_, AddonStorageContainer>) -> Result<(
     addons.counts().await.map_err(|e| e.to_string())
 }
 
+
 #[tauri::command]
 pub async fn addons_list_managed(
     addons: State<'_, AddonStorageContainer>,
     cfg: State<'_, AppConfigContainer>,
+    sort: Option<SelectedSort>
 ) -> Result<Vec<AddonEntry>, String> {
     let addon_list = get_addon_list(cfg).await;
     let addons = addons.lock().await;
-    addons.list(addon_list).await.map_err(|e| e.to_string())
+    addons.list(addon_list, sort).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn addons_list_workshop(
     addons: State<'_, AddonStorageContainer>,
     cfg: State<'_, AppConfigContainer>,
+    sort: Option<SelectedSort>
 ) -> Result<Vec<AddonEntry>, String> {
     let addon_list = get_addon_list(cfg).await;
     let addons = addons.lock().await;
     addons
-        .list_workshop(addon_list)
+        .list_workshop(addon_list, sort)
         .await
         .map_err(|e| e.to_string())
 }

@@ -18,12 +18,12 @@
             </td>
         </tr>
         <tr>
-            <th>
-                <input type="checkbox" class="checkbox extra-large" v-model="selectAll" @input="toggleSelectAll" />
+            <th data-tooltip="Select all">
+                <input type="checkbox" class="checkbox extra-large" v-model="selectAll" @input="toggleSelectAll"/>
             </th>
-            <th>Addon</th>
-            <th style="min-width:8em">Size</th>
-            <th>Updated</th>
+            <SortableColumnHeader @sort="setSort" label="Addon Name" field="title" :sort="sort" />
+            <SortableColumnHeader @sort="setSort" label="Size" field="file_size" :sort="sort" style="min-width:8em" />
+            <SortableColumnHeader @sort="setSort" label="Updated" field="updated_at" :sort="sort" style="min-width:8em" />
         </tr>
     </thead>
     <tbody>
@@ -55,14 +55,20 @@ import AddonRow from './AddonRow.vue';
 import { getAddonContents } from '../js/app.ts';
 import AddonInfoModal from './modals/AddonInfoModal.vue';
 import Field from './Field.vue';
+import Icon from './Icon.vue';
+import SortableColumnHeader, { SelectedSort } from './SortableColumnHeader.vue';
+
+const SORT_ICONS = ["iconoir:sort", "iconoir:sort-down", "iconoir:sort-up"]
 
 const emit = defineEmits(["refresh"])
 
 const props = defineProps<{
     addons: AddonEntry[],
     workshop?: boolean
+    defaultSort?: SelectedSort
 }>()
 
+const sort = ref<SelectedSort|null>(props.defaultSort ?? null)
 const selectAll = ref(false)
 const selected = ref<Record<string, boolean>>({})
 const selectedEntry = ref<AddonEntry|null>(null)
@@ -95,6 +101,14 @@ function toggleSelectAll(event: InputEvent) {
     }
     selected.value = val
 }
+function setSort(field: string, descending = false) {
+    if(!sort.value || sort.value.field != field) {
+        sort.value = { field, descending }
+    } else {
+        sort.value.descending = !sort.value.descending
+    }
+    onRefresh()
+}
 
 function onTagSelected(tag: string) {
     if(query.value.length > 0) {
@@ -104,7 +118,7 @@ function onTagSelected(tag: string) {
 }
 
 function onRefresh() {
-    emit('refresh')
+    emit('refresh', sort.value)
     if(selectedEntry.value) {
         // Update the selected addon modal with the updated data from the list
         console.debug('replaced selectedEntry', selectedEntry.value?.id)

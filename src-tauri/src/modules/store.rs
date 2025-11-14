@@ -3,7 +3,7 @@ use bitflags::bitflags;
 use chrono::DateTime;
 use l4d2_addon_parser::AddonInfo;
 use l4d2_addon_parser::addon_list::AddonList;
-use log::info;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono;
 use sqlx::types::chrono::Utc;
@@ -102,6 +102,21 @@ pub struct AddonEntry {
     pub enabled: Option<bool>,
 }
 
+#[derive(Deserialize)]
+pub struct SelectedSort {
+    field: String,
+    descending: bool,
+}
+impl SelectedSort {
+    pub fn new(field: &str, descending: bool) -> Self {
+        Self { field: field.to_string(), descending }
+    }
+
+    pub fn get_sql(&self) -> String {
+        format!("{} {}", self.field, if self.descending { "DESC" } else { "ASC" })
+    }
+}
+
 pub struct AddonStorage {
     pool: Pool<Sqlite>,
     db_path: PathBuf,
@@ -149,16 +164,20 @@ impl AddonStorage {
     pub async fn list(
         &self,
         addon_list: Option<AddonList>,
+        sort: Option<SelectedSort>
     ) -> Result<Vec<AddonEntry>, sqlx::Error> {
         // TODO: include workshop_items.*
+        let sort = sort.unwrap_or(SelectedSort { field: "title".to_string(), descending: true });
+        debug!("Sorting by {}", sort.get_sql());
         Ok(sqlx::query_as::<_, StandardAddonWithTags>(
-            r#"
+            AssertSqlSafe(format!("
                 select addons.*, GROUP_CONCAT(tags.tag) tags
                 from addons
                 left join addon_tags tags on tags.hash = addons.file_hash
                 left join workshop_items wi on wi.publishedfileid = addons.workshop_id
                 group by addons.file_hash
-            "#,
+                order by {}
+            ", sort.get_sql())),
         )
         .fetch_all(&self.pool)
         .await?
@@ -186,15 +205,18 @@ impl AddonStorage {
     pub async fn list_workshop(
         &self,
         addon_list: Option<AddonList>,
+        sort: Option<SelectedSort>
     ) -> Result<Vec<AddonEntry>, sqlx::Error> {
         // flags & 1 marks AddonFlags::WORKSHOP
+        let sort = sort.unwrap_or(SelectedSort { field: "time_updated".to_string(), descending: true });
+        debug!("Sorting by {}", sort.get_sql());
         Ok(sqlx::query_as::<_, WorkshopEntry>(
-            r#"
+            AssertSqlSafe(format!(r#"
                 select *
                 from workshop_items
                 where flags & 1
-                order by time_updated desc
-            "#,
+                order by {}
+            "#, sort.get_sql()))
         )
         .fetch_all(&self.pool)
         .await?

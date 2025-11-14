@@ -1,6 +1,6 @@
 <template>
 <div>
-    <AddonList :addons="addons" @refresh="refresh" ref="list">
+    <AddonList :addons="addons" @refresh="refresh" ref="list" :default-sort="{ field: 'title', descending: false }">
         <template #select-buttons="{selected}">
             <button class="level-item button " @click="onClearPressed">
                 <Icon icon="erase">Clear Selection</Icon>
@@ -23,12 +23,13 @@ import { deleteAddons, setAddonState, listAddons } from '../js/tauri.ts';
 import AddonList from '../components/AddonList.vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import Icon from '../components/Icon.vue';
+import { SelectedSort } from '../components/SortableColumnHeader.vue';
 
 const list = ref()
 const addons = ref<AddonEntry[]>([])
 
-async function refresh() {
-    addons.value = await listAddons(false)
+async function refresh(sort?: SelectedSort) {
+    addons.value = await listAddons(false, sort)
     console.debug("got addons", addons.value)
 }
 

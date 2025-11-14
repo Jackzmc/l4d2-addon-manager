@@ -4,6 +4,7 @@ import { notify } from '@kyvg/vue3-notification';
 import { AddonCounts, AppConfig, InitAppData, ItemResult, LogEntry } from '../types/App.ts';
 import { handleItemResults } from './app.ts';
 import { ScanSpeed } from '../types/Scan.ts';
+import { SelectedSort } from '../components/SortableColumnHeader.vue';
 
 async function tryInvoke<T>(cmd: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
     try {
@@ -27,8 +28,8 @@ export async function countAddons(): Promise<AddonCounts> {
     }
 }
 
-export async function listAddons(workshop = false): Promise<AddonEntry[]> {
-    return await tryInvoke(workshop ? "addons_list_workshop" : "addons_list_managed")
+export async function listAddons(workshop = false, sort?: SelectedSort): Promise<AddonEntry[]> {
+    return await tryInvoke(workshop ? "addons_list_workshop" : "addons_list_managed", { sort })
 }
 
 export async function getGameFolder(): Promise<string | null> {
