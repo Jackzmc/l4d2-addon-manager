@@ -31,13 +31,6 @@ struct ScanCounter {
 }
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "snake_case")]
-pub struct ScanProgress {
-    items: u32,
-    processed: u32
-}
-
-#[derive(Serialize, Clone)]
-#[serde(rename_all = "snake_case")]
 #[serde(tag = "state")]
 pub enum ScanState {
     Started {

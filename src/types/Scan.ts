@@ -24,11 +24,6 @@ export interface ScanStateEvent_Complete {
 
 export type ScanResultType = "updated" | "renamed" | "added" | "no_action"
 
-export interface ScanProgress {
-    items: number,
-    processed: number
-}
-
 export const enum ScanState {
     Inactive,
     Running,

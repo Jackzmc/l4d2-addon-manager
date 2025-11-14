@@ -1,5 +1,5 @@
 <template>
-<div>
+<div style="height: 100%">
     <div class="columns is-gapless" style="height: 100%">
         <div class="column is-one-fifth" >
             <Sidebar @scan="onScanRequest" :scan-state="scanState" :app-data="staticData" :counts="counts" />
@@ -14,9 +14,11 @@
             </router-view>
         </main>
     </div>
-    <progress v-if="scanState != ScanState.Inactive" :class="['mt-6 progress scan is-small mb-0',{'is-info': scanState === ScanState.Running, 'is-warning': scanState === ScanState.Cancelling}]" style="border-radius: 0;" :value="scanProgress?.processed" :max="scanProgress?.items">
-
-    </progress>
+    <progress v-if="scanState != ScanState.Inactive" 
+        :class="['mt-6 progress scan is-small mb-0',
+            {'is-info': scanState === ScanState.Running, 'is-warning': scanState === ScanState.Cancelling}]" 
+        style="border-radius: 0;" :value="scanProgress?.value" :max="scanProgress?.total"
+    />
 </div>
 </template>
 
@@ -25,10 +27,9 @@ import Sidebar from '@/components/Sidebar.vue'
 import { notify } from '@kyvg/vue3-notification';
 import { onMounted, onUnmounted, ref, Transition } from 'vue';
 import { ScanSpeed, ScanState, ScanStateEvent } from '../types/Scan.ts';
-import { AddonCounts, AppConfig, StaticAppData } from '../types/App.ts'
+import { AddonCounts, AppConfig, ProgressPayload, StaticAppData } from '../types/App.ts'
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { abortScan, countAddons, startScan } from '../js/tauri.ts';
-import { ScanProgress } from '../types/Scan.ts';
 
 // Is slow, 1s / addon, so run it infrequently
 const BACKGROUND_SCAN_INTERVAL = 1000 * 60 * 60 * 1 // every day?
@@ -40,7 +41,7 @@ const props = defineProps<{
 
 const view = ref()
 const scanState = ref<ScanState>(ScanState.Inactive)
-const scanProgress = ref<ScanProgress|null>(null)
+const scanProgress = ref<ProgressPayload|null>(null)
 const counts = ref<AddonCounts>({ addons: 0, workshop: 0 })
 
 // tell child to refresh, if they can
@@ -99,7 +100,7 @@ onMounted(async() => {
         scanProgress.value = null
     })
 
-    stopScanProgressListener = await listen<ScanProgress>("scan_progress", (event) => {
+    stopScanProgressListener = await listen<ProgressPayload>("scan_progress", (event) => {
         // Don't set any progress if we cancelling, want to show the intermediate bar
         if(scanState.value != ScanState.Cancelling)
             scanProgress.value = event.payload

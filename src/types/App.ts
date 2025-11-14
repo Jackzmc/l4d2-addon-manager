@@ -39,3 +39,8 @@ export interface LogEntry {
     message: string, 
     level: LogLevel
 }
+
+export interface ProgressPayload {
+    value: number,
+    total: number
+}

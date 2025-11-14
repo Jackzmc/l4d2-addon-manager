@@ -1,5 +1,5 @@
 use crate::modules::store::AddonStorageContainer;
-use crate::scan::{ScanProgress, ScanState};
+use crate::scan::{ScanState};
 use crate::scan::helpers::{get_vpks_in_dir, get_workshop_folder_ws_ids};
 use crate::scan::worker::{
     AddonFileData, ProcessResult, WorkerTask, async_process_file, scan_worker_thread,
@@ -19,6 +19,7 @@ use std::sync::atomic::Ordering;
 use std::time::Instant;
 use tauri::AppHandle;
 use tauri::Emitter;
+use crate::util::defs::ProgressPayload;
 
 /// Main thread that starts and manages thread
 pub(super) async fn scan_main(
@@ -107,7 +108,7 @@ pub(super) async fn scan_main(
             }
         };
 
-        app.emit("scan_progress", ScanProgress { items: items_to_scan, processed: counter.total }).ok();
+        app.emit("scan_progress", ProgressPayload::new(counter.total, items_to_scan)).ok();
 
         // Check if we should abort
         if !running_signal.load(Ordering::SeqCst) {

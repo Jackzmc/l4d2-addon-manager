@@ -1,3 +1,5 @@
+pub mod defs;
+
 use crate::modules::cfg::AppConfigContainer;
 use l4d2_addon_parser::addon_list::AddonList;
 use log::warn;

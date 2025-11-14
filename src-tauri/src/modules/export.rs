@@ -3,11 +3,12 @@ use std::fs::{File, read_dir};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use tauri::{AppHandle, Manager};
+use tauri::{App, AppHandle, Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 use zip::result::ZipError;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
+use crate::util::defs::ProgressPayload;
 
 /// Export the app. If addons_folder set, addons are included
 pub fn export_app(
@@ -51,8 +52,15 @@ pub fn export_app(
     .map_err(|e| format!("zipping version: {}", e))?;
 
     if let Some(addons_folder) = addons_folder {
-        zip_folder_path(&mut zip, "addons", addons_folder, false)
-            .map_err(|e| format!("zipping addons: {}", e))?;
+        zip.add_directory("addons", SimpleFileOptions::default()).unwrap();
+        let files = export_get_addon_files("addons", addons_folder, false).unwrap();
+        let mut progress = ProgressPayload::new(0, files.len() as u32);
+        for file in files.into_iter() {
+            let (file_name, path) = file;
+            zip_file_path(&mut zip, &file_name, path, SimpleFileOptions::default().compression_method(CompressionMethod::Stored)).unwrap();
+            app.emit("export_progress", progress.clone()).unwrap();
+            progress.value += 1;
+        }
     }
 
     info!(
@@ -122,7 +130,7 @@ where
     zip.add_directory(folder_name, SimpleFileOptions::default())?;
     let dir = read_dir(path);
     let parent_path = Path::new(folder_name);
-    for entry in dir? {
+            for entry in dir? {
         if let Ok(entry) = entry {
             let path = entry.path();
             if path.is_file() {
@@ -143,3 +151,31 @@ where
     }
     Ok(())
 }
+
+fn export_get_addon_files(
+    folder_name: &str,
+    path: PathBuf,
+    recursive: bool,
+) -> Result<Vec<(String, PathBuf)>, std::io::Error>
+{
+    let dir = read_dir(path)?;
+    let parent_path = Path::new(folder_name);
+    let mut files: Vec<(String, PathBuf)> = Vec::new();
+    for entry in dir {
+        if let Ok(entry) = entry {
+            let path = entry.path();
+            if path.is_file() {
+                let name = entry.file_name();
+                let name = name.to_str().unwrap();
+                let file_name = parent_path.join(name).to_string_lossy().to_string();
+                files.push((file_name, path));
+            } else if path.is_dir() {
+                if recursive {
+                    unimplemented!("recursive folder");
+                }
+            }
+        }
+    }
+    Ok(files)
+}
+
