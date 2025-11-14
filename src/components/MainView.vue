@@ -23,10 +23,10 @@
 <script setup lang="ts">
 import Sidebar from '@/components/Sidebar.vue'
 import { notify } from '@kyvg/vue3-notification';
-import { onMounted, ref, Transition } from 'vue';
+import { onMounted, onUnmounted, ref, Transition } from 'vue';
 import { ScanSpeed, ScanState, ScanStateEvent } from '../types/Scan.ts';
 import { AddonCounts, AppConfig, StaticAppData } from '../types/App.ts'
-import { listen } from '@tauri-apps/api/event';
+import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { abortScan, countAddons, startScan } from '../js/tauri.ts';
 import { ScanProgress } from '../types/Scan.ts';
 
@@ -65,9 +65,12 @@ async function onScanRequest() {
     }
 }
 
+
+let stopScanStateListener: UnlistenFn|undefined
+let stopScanProgressListener: UnlistenFn|undefined
 onMounted(async() => {
     counts.value = await countAddons()
-    await listen<ScanStateEvent>("scan_state", (event) => {
+    stopScanStateListener = await listen<ScanStateEvent>("scan_state", (event) => {
         console.debug("scan_state", event)
         if(event.payload.state === "started") {
             notify({
@@ -96,7 +99,7 @@ onMounted(async() => {
         scanProgress.value = null
     })
 
-    await listen<ScanProgress>("scan_progress", (event) => {
+    stopScanProgressListener = await listen<ScanProgress>("scan_progress", (event) => {
         // Don't set any progress if we cancelling, want to show the intermediate bar
         if(scanState.value != ScanState.Cancelling)
             scanProgress.value = event.payload
@@ -107,6 +110,11 @@ onMounted(async() => {
     startScan(ScanSpeed.Background)
     // Setup background scan, only runs on one thread
     setInterval(() => startScan(ScanSpeed.Background), BACKGROUND_SCAN_INTERVAL)
+})
+
+onUnmounted(() => {
+    if(stopScanProgressListener) stopScanProgressListener()
+    if(stopScanStateListener) stopScanStateListener()
 })
 </script>
 
