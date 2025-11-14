@@ -12,7 +12,8 @@ export interface AddonCounts {
 export interface InitAppData {
     initial_route: SetRoute,
     data: StaticAppData,
-    config: AppConfig
+    config: AppConfig,
+    addon_folder_suggestion: string | null
 }
 export interface StaticAppData {
     app_version: string,

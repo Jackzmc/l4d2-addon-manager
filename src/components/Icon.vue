@@ -1,6 +1,6 @@
 <template>
   <span :class="(button ? ' ' : 'icon-text ') + (containerClass ?? '')">
-    <span v-if="$slots.defaultLeft || textLeft" :class="textClass">
+    <span v-if="$slots.defaultLeft || textLeft" :class="[textClass,'mr-2']">
       <slot name="text-left">{{ textLeft }}</slot>
     </span>
     <span :class="' ' + (iconClass ?? '')">

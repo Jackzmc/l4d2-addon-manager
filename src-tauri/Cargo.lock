@@ -2377,6 +2377,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "steam-workshop-api",
+ "steamlocate",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -4838,6 +4839,20 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "steamlocate"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a13160bc6ea5cd80cde195ad4a4c629701db2bf397b62c139aa9e739016d2499"
+dependencies = [
+ "crc",
+ "home",
+ "keyvalues-parser",
+ "keyvalues-serde",
+ "serde",
+ "winreg",
 ]
 
 [[package]]

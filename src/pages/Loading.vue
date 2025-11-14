@@ -28,6 +28,9 @@ onMounted(async() => {
 
     const initData = await init()
     emit("init", initData)
-    router.push({ name: initData.initial_route.name })
+    // send some init data as query, don't want to just keep track of it for no reason
+    router.push({ name: initData.initial_route.name, query: {
+        suggestion: initData.addon_folder_suggestion
+    } })
 })
 </script>

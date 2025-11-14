@@ -8,6 +8,7 @@ use serde::Serialize;
 use std::fs::File;
 use std::io::BufRead;
 use std::path::PathBuf;
+use steamlocate::{App, Error, Library};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
@@ -20,12 +21,30 @@ pub struct InitData {
     initial_route: SetRoute,
     data: StaticData,
     config: AppConfig,
+    addon_folder_suggestion: Option<PathBuf>,
 }
 #[tauri::command]
 pub async fn init(
+    app: AppHandle,
     config: State<'_, AppConfigContainer>,
     data: State<'_, StaticData>,
 ) -> Result<InitData, String> {
+    let suggestion = {
+        match steamlocate::SteamDir::locate().and_then(|steam_dir| steam_dir.find_app(550)) {
+            Ok(Some((app, libr))) => { Some(libr.resolve_app_dir(&app).join("left4dead2/addons")) }
+            _ => {
+                match std::env::consts::OS {
+                    "windows" => Some(PathBuf::from(r"C:\Program Files (x86)\Steam\steamapps\common\Left 4 Dead2\left4dead2\addons")),
+                    "linux" => {
+                        app.path().home_dir()
+                            .map(|home| home.join(".steam/steam/steamapps/common/Left 4 Dead 2/left4dead2/addons"))
+                            .ok()
+                    },
+                    _ => None
+                }
+            }
+        }
+    };
     let config = config.lock().await;
     let route_name = match config.addons_folder {
         Some(_) => {
@@ -44,6 +63,7 @@ pub async fn init(
             name: Some(route_name.to_string()),
         },
         data: data.inner().clone(),
+        addon_folder_suggestion: suggestion,
         config,
     })
 }
