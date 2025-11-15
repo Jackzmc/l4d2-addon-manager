@@ -167,7 +167,7 @@ impl AddonStorage {
         sort: Option<SelectedSort>
     ) -> Result<Vec<AddonEntry>, sqlx::Error> {
         // TODO: include workshop_items.*
-        let sort = sort.unwrap_or(SelectedSort { field: "title".to_string(), descending: true });
+        let sort = sort.unwrap_or(SelectedSort { field: "title".to_string(), descending: false });
         debug!("Sorting by {}", sort.get_sql());
         Ok(sqlx::query_as::<_, StandardAddonWithTags>(
             AssertSqlSafe(format!("

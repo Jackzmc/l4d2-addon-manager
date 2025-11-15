@@ -65,10 +65,9 @@ const emit = defineEmits(["refresh"])
 const props = defineProps<{
     addons: AddonEntry[],
     workshop?: boolean
-    defaultSort?: SelectedSort
+    sort: SelectedSort
 }>()
 
-const sort = ref<SelectedSort|null>(props.defaultSort ?? null)
 const selectAll = ref(false)
 const selected = ref<Record<string, boolean>>({})
 const selectedEntry = ref<AddonEntry|null>(null)
@@ -102,12 +101,12 @@ function toggleSelectAll(event: InputEvent) {
     selected.value = val
 }
 function setSort(field: string, descending = false) {
-    if(!sort.value || sort.value.field != field) {
-        sort.value = { field, descending }
+    if(props.sort?.field === field) {
+        // Flip order if same field
+        emit("refresh", { field: props.sort.field, descending: !props.sort.descending })
     } else {
-        sort.value.descending = !sort.value.descending
+        emit("refresh", { field, descending })
     }
-    onRefresh()
 }
 
 function onTagSelected(tag: string) {
@@ -118,7 +117,7 @@ function onTagSelected(tag: string) {
 }
 
 function onRefresh() {
-    emit('refresh', sort.value)
+    emit('refresh')
     if(selectedEntry.value) {
         // Update the selected addon modal with the updated data from the list
         console.debug('replaced selectedEntry', selectedEntry.value?.id)

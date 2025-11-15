@@ -26,7 +26,7 @@ const icon = computed(() => {
     if(!props.sort || props.sort.field !== props.field) {
         return "iconoir:sort"
     }
-    return props.sort.descending ? "iconoir:sort-up" : "iconoir:sort-up" 
+    return props.sort.descending ? "iconoir:sort-down" : "iconoir:sort-up" 
 })
 
 function onClick() {

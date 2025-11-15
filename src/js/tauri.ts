@@ -29,7 +29,8 @@ export async function countAddons(): Promise<AddonCounts> {
 }
 
 export async function listAddons(workshop = false, sort?: SelectedSort): Promise<AddonEntry[]> {
-    return await tryInvoke(workshop ? "addons_list_workshop" : "addons_list_managed", { sort })
+    const key = workshop ? "addons_list_workshop" : "addons_list_managed"
+    return await tryInvoke(key, { sort })
 }
 
 export async function getGameFolder(): Promise<string | null> {

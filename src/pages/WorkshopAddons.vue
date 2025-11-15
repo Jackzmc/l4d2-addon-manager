@@ -1,6 +1,6 @@
 <template>
 <div>
-    <AddonList workshop :addons="addons" @refresh="refresh" :default-sort="{ field: 'title', descending: false }">
+    <AddonList workshop :addons="addons" :sort="sort" @refresh="refresh">
         <template #select-buttons="{selected}">
             <button class="level-item button is-warning" @click="onMigratePressed(selected)">Move to managed addons</button>
             <button v-if="config.steam_apikey" class="level-item button is-link" @click="onUnsubscribePressed(selected)">Unsubscribe</button>
@@ -18,15 +18,18 @@ import { AddonEntry } from '../types/Addon.ts';
 import { listAddons, migrateWorkshopAddons, unsubscribeAddons } from '../js/tauri.ts';
 import AddonList from '../components/AddonList.vue';
 import { AppConfig } from '../types/App.ts';
+import { SelectedSort } from '../components/SortableColumnHeader.vue';
 
 const props = defineProps<{
     config: AppConfig
 }>()
 
 const addons = ref<AddonEntry[]>([])
+const sort = ref<SelectedSort>({ field: "title", descending: false })
 
-async function refresh() {
-    addons.value = await listAddons(true)
+async function refresh(newSort?: SelectedSort) {
+    if(newSort) sort.value = newSort
+    addons.value = await listAddons(true, sort.value)
     console.debug("got addons", addons.value)
 }
 
