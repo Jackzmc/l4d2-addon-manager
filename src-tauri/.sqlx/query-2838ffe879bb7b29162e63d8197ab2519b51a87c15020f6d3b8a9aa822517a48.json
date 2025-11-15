@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE addons SET filename = NULL WHERE scan_id != ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "2838ffe879bb7b29162e63d8197ab2519b51a87c15020f6d3b8a9aa822517a48"
+}

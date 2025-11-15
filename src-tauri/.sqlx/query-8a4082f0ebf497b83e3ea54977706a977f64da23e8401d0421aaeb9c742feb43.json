@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE workshop_items SET flags=flags&~1 WHERE flags & 1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "8a4082f0ebf497b83e3ea54977706a977f64da23e8401d0421aaeb9c742feb43"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM addon_tags WHERE hash = ? AND tag = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "eed9617dc42294c06dceb0dcbe13ccdcbd9858278801ecee5d215a196262b10b"
+}

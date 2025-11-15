@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO addons\n                (filename, updated_at, created_at, file_size, title, author, version, tagline, flags, workshop_id, scan_id, file_hash)\n                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": []
+  },
+  "hash": "3fd7104f46cb961b6b389f9484cab3cdd9f4ecda8126a558a4a7b62f5a8058d8"
+}
