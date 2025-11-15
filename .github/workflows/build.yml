@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  publish-tauri:
+  build:
     permissions:
       contents: write
     strategy:
@@ -45,7 +45,7 @@ jobs:
         run: pnpm tauri build --release
         
       - name: upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: target/release/bundle/**/*4
 
