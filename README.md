@@ -24,6 +24,7 @@ In addition, it lets you quickly offload workshop addons to be manually installe
 * Profiles (sets of addons) that can be swapped out and shared with others
 * Testing on Windows
 * GameMaps support
+* CLI (Maybe)
 
 ### Preview
 
