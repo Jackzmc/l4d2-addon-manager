@@ -41,7 +41,7 @@
     </tbody>
 </table>
 
-<AddonInfoModal workshop v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" @refresh="onRefresh" />
+<AddonInfoModal :workshop="workshop" v-if="selectedEntry" :entry="selectedEntry" @close="setDetailAddon(null)" @refresh="onRefresh" />
 </template>
 
 <style>

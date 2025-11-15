@@ -63,15 +63,18 @@
             <td><b>Content Types</b></td>
             <td>
                 <div class="tags">
-                    <span class="tag" v-for="tag in flags" :key="tag">{{ tag }}</span>
+                    <span class="tag has-background-primary-light" v-for="tag in flags" :key="tag">{{ tag }}</span>
                 </div>
             </td>
         </tr>
-        <tr>
+        <tr v-if="!workshop">
             <td><b>My Tags</b></td>
             <td>
-                <div class="tags mb-2" v-if="!workshop">
-                    <span class="tag" v-for="tag in props.entry.tags" :key="tag">tag:{{ tag }}</span>
+                <div class="tags mb-2">
+                    <span v-for="tag in props.entry.tags" :key="tag" 
+                        class="tag has-tooltip-danger" data-tooltip="click to delete tag"
+                        @click="onDelTagPressed(tag)"
+                    >tag:{{ tag }}</span>
                     <span class="button is-link is-small" @click="onAddTagPressed">+ Add Tag</span>
                 </div>
             </td>
@@ -102,7 +105,7 @@ import { formatSize } from '../js/utils.ts';
 import { AddonEntry } from '../types/Addon.ts';
 import { getRelDate } from '../js/utils';
 import { getAddonContents } from '../js/app.ts';
-import { addTag } from '../js/tauri.ts';
+import { addTag, removeTag } from '../js/tauri.ts';
 import Icon from './Icon.vue';
 
 const emit = defineEmits(["refresh", "set-state"])
@@ -125,7 +128,7 @@ const updatedAtRel = computed(() => {
     return getRelDate(updatedAt.value)
 })
 const flags = computed(() => {
-    return getAddonContents(props.entry.info.flags)
+    return props.workshop ? props.entry.workshop?.tags.split(",") : getAddonContents(props.entry.info.flags)
 })
 
 async function onAddTagPressed() {
@@ -134,5 +137,9 @@ async function onAddTagPressed() {
         await addTag(props.entry.id, tagValue)
         emit("refresh")
     }
+}
+async function onDelTagPressed(tag: string) {
+    await removeTag(props.entry.id, tag)
+    emit("refresh")
 }
 </script>

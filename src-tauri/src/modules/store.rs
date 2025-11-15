@@ -242,7 +242,7 @@ impl AddonStorage {
                 chapter_ids: None,
                 workshop_id: Some(entry.publishedfileid as i64),
             },
-            tags: entry.tags.split(',').map(|s| s.to_string()).collect(),
+            tags: vec![], // not supported yet (needs own table?)
             workshop: Some(entry),
         })
         .collect::<Vec<AddonEntry>>())
