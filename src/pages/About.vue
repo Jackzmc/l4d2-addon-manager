@@ -35,8 +35,6 @@ import { BundleType, getBundleType, getTauriVersion } from '@tauri-apps/api/app'
 
 const emit = defineEmits(["check-update", "update"])
 
-const isChecking = ref(false)
-
 const props = defineProps<{
     staticData: StaticAppData,
     availableUpdate: UpdateData
@@ -45,10 +43,8 @@ const props = defineProps<{
 const tauriVersion = ref<string>()
 const bundleType = ref<BundleType>()
 
-async function checkForUpdates() {
-    isChecking.value = true
+function checkForUpdates() {
     emit("check-update")
-    isChecking.value = false
 }
 
 function update() { 
