@@ -46,3 +46,8 @@ export interface ProgressPayload {
     value: number,
     total: number
 }
+
+export interface UpdateData {
+    version?: string,
+    updating?: boolean
+}
