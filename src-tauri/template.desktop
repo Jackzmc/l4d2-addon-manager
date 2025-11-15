@@ -1,0 +1,9 @@
+[Desktop Entry]
+Categories=Utility;Game
+Comment=Manage L4D2 Addons with ease
+Exec=l4d2-addon-manager
+StartupWMClass=l4d2-addon-manager
+Icon=l4d2-addon-manager
+Name=L4D2 Addon Manager
+Terminal=false
+Type=Application

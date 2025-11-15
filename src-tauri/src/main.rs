@@ -10,5 +10,8 @@ pub mod modules;
 mod scan;
 
 fn main() {
+    if cfg!(unix) {
+        unsafe { std::env::set_var("__NV_DISABLE_EXPLICIT_SYNC", "1"); }
+    }
     l4d2_addon_manager_lib::run()
 }
