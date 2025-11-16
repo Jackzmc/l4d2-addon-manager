@@ -27,5 +27,6 @@ onMounted(async() => {
 html, body, #app {
   background-color: rgba(255, 255, 255, 0.667);
   height: 100%;
+  overflow: hidden;
 }
 </style>

@@ -85,22 +85,26 @@ async function onScanRequest() {
 }
 
 async function checkForUpdates() {
-    updatingOrChecking.value = true
-    const update = await check();
+    try {
+        updatingOrChecking.value = true
+        const update = await check();
+        if(!update) return notify({
+            type: "info",
+            title: "No update found"
+        })
+        console.info(
+            `found update ${update.version} from ${update.date} with notes ${update.body}`
+        );
+        notify({
+            type: "info",
+            title: "Update Found",
+            text: `v${update.version} is now available`
+        })
+        availableUpdate.value = update
+    } catch(err) {
+        console.error(`[Updater] check failed:`, err)
+    }
     updatingOrChecking.value = false
-    if(!update) return notify({
-        type: "info",
-        title: "No update found"
-    })
-    console.info(
-        `found update ${update.version} from ${update.date} with notes ${update.body}`
-    );
-    notify({
-        type: "info",
-        title: "Update Found",
-        text: `v${update.version} is now available`
-    })
-    availableUpdate.value = update
 }
 
 async function update() {

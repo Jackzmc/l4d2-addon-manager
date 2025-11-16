@@ -32,6 +32,8 @@ pub fn run() {
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(tauri_plugin_log::log::LevelFilter::Info)
+                .max_file_size(1_048_576) // 1 MB
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(4))
                 .build(),
         )
         .plugin(

@@ -3,6 +3,7 @@
     <div class="container px-4 buttons">
         <button :class="['button','is-link','is-outlined']" @click="openLogsFolder()">Open Logs Folder</button>
         <button :class="['button','is-link','is-outlined',{'is-loading': isLogsUploading}]" @click="onUploadLogsPressed">Upload Logs</button>
+        Logs are sorted latest on top
     </div>
     <div class="logs-container">
         <table class="table is-fullwidth is-narrow is-hoverable">
@@ -80,6 +81,7 @@ async function onUploadLogsPressed() {
 onMounted(async () => {
     unsubLogger = await attachLogger(onLogEntry)
     const entries = (await getLogs())
+    console.info(`Got ${entries.length} logs`)
     entries.forEach(entry => onLogEntry(entry))
 })
 
