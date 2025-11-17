@@ -1,5 +1,5 @@
 <template>
-    <Component :is="component" target="_blank" :href="href" :class="classList" :disabled="disabled ? true : undefined">
+    <Component :is="component" :type="type" target="_blank" :href="href" :class="classList" :disabled="disabled ? true : undefined">
         <Icon button inline v-if="iconLeft" :icon="iconLeft" class="mr-2" />
         <slot />
         <Icon button inline v-if="iconRight" :icon="iconRight" class="ml-2" />
@@ -18,6 +18,7 @@ const props = defineProps<{
     iconLeft?: string
     iconRight?: string,
     href?: string,
+    type?: string
 }>()
 
 const classList = computed(() => {
@@ -25,6 +26,8 @@ const classList = computed(() => {
 })
 
 const component = computed(() => {
-    return props.href ? "a" : "button"
+    if(props.type) return "input"
+    if(props.href) return "a"
+    return "button"
 })
 </script>

@@ -23,7 +23,9 @@ export interface StaticAppData {
 
 export interface AppConfig {
     addons_folder: string | null,
-    steam_apikey: string | null
+    steam_apikey: string | null,
+    startup_scan: boolean,
+    startup_telemetry: boolean
 }
 
 export type ItemResult = ItemResult_Ok | ItemResult_Error

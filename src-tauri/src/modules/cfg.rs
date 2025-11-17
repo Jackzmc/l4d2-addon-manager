@@ -2,6 +2,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use serde_with::serde_as;
 use steam_workshop_api::SteamWorkshop;
 use tauri::async_runtime::Mutex;
 
@@ -24,12 +25,22 @@ impl StaticData {
 pub type AppConfigContainer = Mutex<AppConfig>;
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
+#[serde_as]
 pub struct AppConfig {
     #[serde(skip)]
     _save_path: PathBuf,
 
     pub addons_folder: Option<PathBuf>,
+    #[serde_as(as = "NoneAsEmptyString")]
     pub steam_apikey: Option<String>,
+
+    #[serde(default = "default_as_true")]
+    pub startup_scan: bool,
+    #[serde(default)]
+    pub startup_telemetry: bool
+}
+fn default_as_true() -> bool {
+    true
 }
 
 impl AppConfig {
@@ -89,6 +100,8 @@ impl AppConfig {
         self.validate(&new_config)?;
         self.steam_apikey = new_config.steam_apikey;
         self.addons_folder = new_config.addons_folder;
+        self.startup_scan = new_config.startup_scan;
+        self.startup_telemetry = new_config.startup_telemetry;
         Ok(())
     }
 }
