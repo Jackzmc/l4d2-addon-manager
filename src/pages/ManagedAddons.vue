@@ -6,7 +6,7 @@
                 <Icon icon="erase">Clear Selection</Icon>
             </button>
             <button class="level-item button is-link has-tooltip-right" data-tooltip="Enable all selected addons" @click="onSetStatePressed(selected, true)">Enable</button>
-            <button class="level-item button is-link is-outlined has-tooltip-right" data-tooltip="Enable all selected addons" @click="onSetStatePressed(selected, false)">Disable</button>
+            <button class="level-item button is-link is-outlined has-tooltip-right" data-tooltip="Disable all selected addons" @click="onSetStatePressed(selected, false)">Disable</button>
             <button class="level-item button is-danger has-tooltip-right has-tooltip-danger" data-tooltip="Delete all selected addons" @click="onDeletePressed(selected)">Delete</button>
         </template>
     </AddonList>

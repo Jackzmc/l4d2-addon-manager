@@ -103,8 +103,9 @@ async function checkForUpdates() {
         availableUpdate.value = update
     } catch(err) {
         console.error(`[Updater] check failed:`, err)
+    } finally {
+        updatingOrChecking.value = false
     }
-    updatingOrChecking.value = false
 }
 
 async function update() {
