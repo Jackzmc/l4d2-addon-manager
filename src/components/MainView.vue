@@ -38,6 +38,7 @@ import { AddonCounts, AppConfig, ProgressPayload, StaticAppData, UpdateData } fr
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { abortScan, countAddons, startScan } from '../js/tauri.ts';
 import { check, Update } from '@tauri-apps/plugin-updater';
+import { getBundleType } from '@tauri-apps/api/app';
 
 const availableUpdate = ref<Update|null>(null)
 const updatingOrChecking = ref(false)
@@ -186,13 +187,38 @@ onMounted(async() => {
     // Start initial scan
     if(props.staticData.is_prod) {
         if(props.config.startup_scan) startScan(ScanSpeed.Background)
-        // if(props.config.startup_telemetry) // TODO: impl
+        if(props.config.startup_telemetry) sendTelemetry()
     }
     // Setup background scan, only runs on one thread
     setInterval(() => startScan(ScanSpeed.Background), BACKGROUND_SCAN_INTERVAL)
 
     checkForUpdates()
 })
+
+async function sendTelemetry() {
+    try {
+        const params = new URLSearchParams()
+        params.append("app_version", props.staticData.app_version)
+        if(props.staticData.git_commit) params.append("git_commit", props.staticData.git_commit)
+        params.append("os", props.staticData.os_type)
+        params.append("arch", props.staticData.os_arch)
+        params.append("pkg_type", await getBundleType())
+        params.append("num_addons", counts.value.addons.toString())
+        const res = await fetch(`https://telemetry.jackz.me/ingest.php?${params.toString()}`, {
+            method: "POST",
+            headers: {
+                // 'user-agent': `l4d2-addon-manager (v${props.staticData.app_version})`
+            }
+        })
+        if(res.ok) {
+            console.info("[telemetry] ok. sent initial telemetry (thanks for opting in)")
+        } else {
+            console.warn(`[telemetry] failed. ${res.status} ${res.statusText}`)
+        }
+    }catch(err) {
+        console.warn("[telemetry]", err)
+    }
+}
 
 onUnmounted(() => {
     if(stopScanProgressListener) stopScanProgressListener()

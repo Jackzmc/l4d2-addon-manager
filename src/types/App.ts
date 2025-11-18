@@ -18,6 +18,8 @@ export interface InitAppData {
 export interface StaticAppData {
     app_version: string,
     git_commit: string | null,
+    os_type: string,
+    os_arch: string,
     is_prod: boolean
 }
 

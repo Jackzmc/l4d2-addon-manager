@@ -10,6 +10,8 @@ use tauri::async_runtime::Mutex;
 pub struct StaticData {
     pub app_version: String,
     pub git_commit: Option<String>,
+    pub os_type: String,
+    pub os_arch: String,
     pub is_prod: bool
 }
 impl StaticData {
@@ -17,6 +19,8 @@ impl StaticData {
         Self {
             app_version: app.package_info().version.to_string(),
             git_commit: option_env!("GIT_COMMIT").map(|s| s.to_string()),
+            os_type: std::env::consts::OS.to_string(),
+            os_arch: std::env::consts::ARCH.to_string(),
             is_prod: !cfg!(debug_assertions)
         }
     }

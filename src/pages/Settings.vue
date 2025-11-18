@@ -54,7 +54,7 @@
                     <input type="checkbox" class="checkbox large" v-model="newConfig.startup_telemetry">
                     Enable Telemetry at startup
                 </label>
-                <p class="help">This will send OS, OS version, app version, and number of addons to help me understand how this app is being used</p>
+                <p class="help">This will send OS type, OS architecture, app version, and number of addons to help me understand how this app is being used</p>
             </Field>
         </div>
 
