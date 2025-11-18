@@ -141,6 +141,7 @@ impl AddonScanner {
         true
     }
     pub async fn abort(&mut self, mut reason: Option<String>) {
+        info!("Aborting scan");
         if !self.check_running() {
             return;
         } // ignore if not running
@@ -172,9 +173,9 @@ impl AddonScanner {
     /// Checks if we still have a thread handle, checks if thread finished, and removes ref
     fn _check_thread_complete(&mut self) -> bool {
         if let Some(task) = self.scan_main_task.as_ref() {
-            debug!("scan task still exists, checking if its finished");
+            debug!("abort: scan task still exists, checking if its finished");
             if task.is_finished() {
-                debug!("its finished, removing it");
+                debug!("abort: task finished. removing.");
                 self.scan_main_task.take();
                 return false;
             }

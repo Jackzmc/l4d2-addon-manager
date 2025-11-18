@@ -5,7 +5,7 @@ use crate::commands::logs as cmd_logs;
 use crate::modules::cfg;
 use crate::modules::store::{AddonStorage, AddonStorageContainer};
 use crate::scan::AddonScanner;
-use log::{LevelFilter, debug};
+use log::{LevelFilter, debug, info};
 use std::str::FromStr;
 use std::sync::Arc;
 use tauri::async_runtime::Mutex;
@@ -50,6 +50,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            info!("starting {}/v{} (os={}) (debug={})", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), std::env::consts::OS, cfg!(debug_assertions));
             app.manage(cfg::StaticData::new(app));
             let data_dir = app.path().app_local_data_dir().unwrap();
 

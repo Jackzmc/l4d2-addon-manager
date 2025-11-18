@@ -57,9 +57,8 @@ pub(super) async fn scan_main(
     let queue = Arc::new(tokio::sync::Mutex::new(VecDeque::<WorkerTask>::from(
         scan_tasks,
     )));
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AddonFileData, String>>(60);
-    // let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Result<AddonFileData, String>>();
-
+    // let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AddonFileData, String>>(60);
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Result<AddonFileData, String>>();
     debug!("starting {} worker threads", threads);
     for i in 0..threads {
         let tx = tx.clone();
@@ -107,6 +106,7 @@ pub(super) async fn scan_main(
                 warn!("scan_file: {}", err);
             }
         };
+        trace!("channel closed, no more results, finishing up...");
 
         app.emit("scan_progress", ProgressPayload::new(counter.total, items_to_scan)).ok();
 

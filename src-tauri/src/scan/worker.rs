@@ -51,7 +51,7 @@ pub enum WorkerTask {
 /// Ends when queue is empty
 pub fn scan_worker_thread(
     i: u8,
-    tx: tokio::sync::mpsc::Sender<Result<AddonFileData, String>>,
+    tx: tokio::sync::mpsc::UnboundedSender<Result<AddonFileData, String>>,
     queue: Arc<tokio::sync::Mutex<VecDeque<WorkerTask>>>,
 ) -> std::io::Result<()> {
     loop {
@@ -72,8 +72,10 @@ pub fn scan_worker_thread(
                             &res.hash,
                             time.elapsed().as_millis()
                         );
-                        if let Err(_) = tx.blocking_send(Ok(res)) {
-                            trace!("[worker{i}] send error, exiting");
+                        if let Err(_) = tx.send(Ok(res)) {
+                            // we should never hopefully get this.
+                            // main task should always just empty queue and let all workers finish up
+                            trace!("[worker{i}] send error, main task gone, exiting...");
                             break;
                         }
                         trace!("[worker{i}] sent result");
