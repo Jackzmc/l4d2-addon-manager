@@ -9,7 +9,7 @@
                         <h4 class="title is-4 is-inline-block" style="vertical-align: bottom">Unsaved Changes</h4>
                     </div>
                     <div class="level-item">
-                        <Button type="submit" color="is-link" class="ml-2" icon-left="iconoir:check">Save</Button>
+                        <Button type="submit" color="is-link" class="ml-2" icon-left="iconoir:check" value="Save" />
                         <Button @click="reset" class="ml-2" icon-left="iconoir:undo">Revert</Button>
                     </div>
                 </div>
