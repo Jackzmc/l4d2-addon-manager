@@ -50,6 +50,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            log_panics::init();
             info!("starting {}/v{} (os={}) (debug={})", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), std::env::consts::OS, cfg!(debug_assertions));
             app.manage(cfg::StaticData::new(app));
             let data_dir = app.path().app_local_data_dir().unwrap();

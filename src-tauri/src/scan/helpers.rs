@@ -37,15 +37,15 @@ pub(super) fn find_workshop_id(filename: &str, addon: &AddonInfo) -> Option<i64>
 
     // Try to get it from filename
     if let Some(cap) = WORKSHOP_FILE_REGEX.find(filename) {
-        let id = cap.as_str().parse::<i64>().unwrap();
+        let id = cap.as_str().parse::<i64>().expect("regex \\d failed to parse");
         return Some(id);
     }
 
     //Try to get from addon's info url
     if let Some(url) = &addon.addon_url {
         if let Some(capture) = WORKSHOP_URL_REGEX.captures(url) {
-            let id = capture.get(1).unwrap().as_str();
-            return Some(id.parse::<i64>().unwrap());
+            let id = capture.get(1).expect("capture group 1 missing").as_str();
+            return Some(id.parse::<i64>().expect("regex \\d failed to parse"));
         }
     }
 

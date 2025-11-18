@@ -204,9 +204,9 @@ pub async fn async_process_file(
             .into(),
         file_size: get_file_size(&meta),
         flags: flags,
-        title: file.info.title.unwrap(), // TODO: if no info/info.title, use filename?
+        title: file.info.title.unwrap_or_else(|| file.filename.to_string()), // TODO: if no info/info.title, use filename?
         author: file.info.author,
-        version: file.info.version.unwrap(),
+        version: file.info.version,
         tagline: file.info.tagline,
         chapter_ids: file.chapter_ids.map(|c| c.join(",")),
         workshop_id: ws_id,

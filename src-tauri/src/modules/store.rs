@@ -79,7 +79,7 @@ pub struct AddonData {
     /// Author of addon
     pub author: Option<String>,
     /// Version of addon
-    pub version: String,
+    pub version: Option<String>,
     /// A short description of addon
     pub tagline: Option<String>,
     /// Comma separated list of chapter ids, if map
@@ -237,7 +237,7 @@ impl AddonStorage {
                 flags: AddonFlags(0),
                 title: entry.title.clone(),
                 author: Some(entry.creator_id.to_string()),
-                version: "workshop".to_string(),
+                version: Some("workshop".to_string()),
                 tagline: None,
                 chapter_ids: None,
                 workshop_id: Some(entry.publishedfileid as i64),

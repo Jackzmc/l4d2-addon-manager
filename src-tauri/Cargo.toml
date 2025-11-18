@@ -41,6 +41,7 @@ num_cpus = "1.17.0"
 reqwest = "0.12.24"
 steamlocate = "2.0.1"
 serde_with = "3.16.0"
+log-panics = { version = "2", features = ["with-backtrace"]}
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
