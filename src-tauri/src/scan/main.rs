@@ -106,7 +106,6 @@ pub(super) async fn scan_main(
                 warn!("scan_file: {}", err);
             }
         };
-        trace!("channel closed, no more results, finishing up...");
 
         app.emit("scan_progress", ProgressPayload::new(counter.total, items_to_scan)).ok();
 

@@ -67,8 +67,8 @@ const counts = ref<AddonCounts>({ addons: 0, workshop: 0 })
 async function triggerPageRefresh() {
     if(view.value?.refresh) {
         view.value.refresh()
-        counts.value = await countAddons()
     }
+    counts.value = await countAddons()
 }
 
 async function onScanRequest() {
