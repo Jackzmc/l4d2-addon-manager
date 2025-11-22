@@ -15,6 +15,7 @@
                                 :config="config" :static-data="staticData" :availableUpdate="updateData"
                                 @check-update="checkForUpdates"
                                 @update="update"
+                                @scan="onScanRequest"
                             />
                     </keep-alive>
                 </Transition>

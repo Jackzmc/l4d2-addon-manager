@@ -20,6 +20,7 @@ import AddonList from '../components/AddonList.vue';
 import { AppConfig } from '../types/App.ts';
 import { SelectedSort } from '../components/SortableColumnHeader.vue';
 
+const emit = defineEmits(["scan"])
 const props = defineProps<{
     config: AppConfig
 }>()
@@ -41,10 +42,12 @@ function filenamesToWorkshopIds(filenames: string[]): number[] {
 async function onMigratePressed(filenames: string[]) {
     // convert '######.vpk' -> #####
     await migrateWorkshopAddons(filenamesToWorkshopIds(filenames))
+    emit("scan")
 }
 
 async function onUnsubscribePressed(filenames: string[]) {
     await unsubscribeAddons(filenamesToWorkshopIds(filenames))
+    emit("scan")
 }
 
 onMounted(() => {

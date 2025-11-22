@@ -1,13 +1,15 @@
+use std::ops::Deref;
 use crate::modules::cfg::AppConfigContainer;
 use crate::modules::store::{AddonEntry, AddonStorageContainer, FileHash, SelectedSort};
 use crate::scan::{ScanSpeed, ScannerContainer};
 use crate::util::get_addon_list;
 use l4d2_addon_parser::addon_list::AddonList;
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 use serde::{Deserialize, Serialize};
 use sqlx::__rt::spawn_blocking;
 use std::time::Duration;
-use tauri::State;
+use tauri::{AppHandle, State};
+use crate::modules::migrate::{migrate_workshop, unsubscribe_workshop};
 
 #[tauri::command]
 pub async fn addons_counts(addons: State<'_, AddonStorageContainer>) -> Result<(u32, u32), String> {
@@ -88,86 +90,18 @@ impl ItemResult {
 
 #[tauri::command]
 pub async fn addons_migrate(
-    cfg: State<'_, AppConfigContainer>,
+    app: AppHandle,
     ids: Vec<i64>,
 ) -> Result<Vec<ItemResult>, String> {
-    let (workshop_folder, addons_folder, (steam, can_unsubscribe)) = {
-        let cfg = cfg.lock().await;
-        let addons_folder = cfg
-            .addons_folder
-            .as_ref()
-            .ok_or("addons folder missing".to_string())?
-            .to_owned();
-        let steam = cfg.steam();
-        (addons_folder.join("workshop"), addons_folder, steam)
-    };
-    let mut i = 0;
-    debug!(
-        "ws={:?} addons={:?} can_unsubscribe={}",
-        workshop_folder, addons_folder, can_unsubscribe
-    );
-    // sync methods
-    spawn_blocking(move || {
-        let results: Vec<ItemResult> = ids
-            .into_iter()
-            .map(|id| {
-                let filename = format!("{}.vpk", id);
-                let src = workshop_folder.join(&filename);
-                let dest = addons_folder.join(&filename);
-                if let Err(e) = std::fs::copy(src, dest) {
-                    return ItemResult::error(filename, e.to_string());
-                }
-                if can_unsubscribe {
-                    if let Err(e) = steam.unsubscribe(&id.to_string()) {
-                        return ItemResult::error(filename, e.to_string());
-                    }
-                    // Sleep in between requests so we don't hit steam api key
-                    // with a ton (ids.len()) amount of requests at once
-                    std::thread::sleep(Duration::from_millis(500 * i));
-                }
-                i += 1;
-                ItemResult::ok(filename)
-            })
-            .inspect(|result| match result {
-                ItemResult::Ok { filename } => info!("Migrate {}: OK", filename),
-                ItemResult::Error { filename, error } => error!("Migrate {}: {}", filename, error),
-            })
-            .collect();
-        Ok(results)
-    })
-    .await
+    spawn_blocking(move || migrate_workshop(app, ids)).await
 }
 
 #[tauri::command]
 pub async fn addons_unsubscribe(
+    app: AppHandle,
     ids: Vec<i64>,
-    cfg: State<'_, AppConfigContainer>,
 ) -> Result<Vec<ItemResult>, String> {
-    let (steam, can_unsubscribe) = {
-        let cfg = cfg.lock().await;
-        cfg.steam()
-    };
-    if !can_unsubscribe {
-        return Err("Can only unsubscribe if your own steam api key is provided".to_string());
-    }
-    spawn_blocking(move || {
-        let mut i = 0;
-        Ok(ids
-            .into_iter()
-            .map(|id| {
-                let id = id.to_string();
-                if let Err(e) = steam.unsubscribe(&id) {
-                    return ItemResult::error(id, e.to_string());
-                }
-                // Sleep in between requests so we don't hit steam api key
-                // with a ton (ids.len()) amount of requests at once
-                std::thread::sleep(Duration::from_millis(500 * i));
-                i += 1;
-                ItemResult::ok(id)
-            })
-            .collect())
-    })
-    .await
+    spawn_blocking(move || unsubscribe_workshop(app, ids)).await
 }
 
 #[tauri::command]
