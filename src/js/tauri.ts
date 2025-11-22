@@ -65,7 +65,7 @@ export async function migrateWorkshopAddons(ids: number[]): Promise<ItemResult[]
         notify({
             type: "success",
             title: "Migration successful",
-            text: `${results.length} addons have been moved to trash`
+            text: `${results.length} addons have been migrated. Workshop files will be removed by steam on their own`
         })
     } else {
         notify({
@@ -84,7 +84,7 @@ export async function unsubscribeAddons(ids: number[]): Promise<ItemResult[]> {
         notify({
             type: "success",
             title: "Unsubscribe successful",
-            text: `${results.length} addons have been unsubscribed`
+            text: `${results.length} addons have been unsubscribed. Items will be removed by steam on their own`
         })
     } else {
         notify({

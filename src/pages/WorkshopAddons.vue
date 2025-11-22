@@ -1,9 +1,21 @@
 <template>
 <div>
-    <AddonList workshop :addons="addons" :sort="sort" @refresh="refresh">
+    <AddonList workshop :addons="addons" :sort="sort" @refresh="refresh" ref="list">
         <template #select-buttons="{selected}">
-            <button class="level-item button is-warning" @click="onMigratePressed(selected)">Move to managed addons</button>
-            <button v-if="config.steam_apikey" class="level-item button is-link" @click="onUnsubscribePressed(selected)">Unsubscribe</button>
+            <button class="level-item button " @click="onClearPressed">
+                <Icon icon="erase">Clear Selection</Icon>
+            </button>
+            <button class="level-item button is-warning has-tooltip-right" 
+                data-tooltip="Copies workshop files to managed addons and unsubscribes"
+                @click="onMigratePressed(selected)"
+            >
+                Move to managed addons
+            </button>
+            <button v-if="config.steam_apikey" class="level-item button is-link has-tooltip-right" 
+                data-tooltip="Unsubscribes addon from workshop"
+                @click="onUnsubscribePressed(selected)">
+                Unsubscribe
+            </button>
         </template>
     </AddonList>
     <p class="has-text-centered my-6" v-if="addons.length === 0">
@@ -25,6 +37,7 @@ const props = defineProps<{
     config: AppConfig
 }>()
 
+const list = ref()
 const addons = ref<AddonEntry[]>([])
 const sort = ref<SelectedSort>({ field: "title", descending: false })
 
@@ -39,15 +52,20 @@ function filenamesToWorkshopIds(filenames: string[]): number[] {
     return filenames.map(file => Number(file.slice(0, -4)))
 }
 
+function onClearPressed() {
+    list.value.clearSelection()
+}
+
+// TODO: better solution than rescan?
 async function onMigratePressed(filenames: string[]) {
     // convert '######.vpk' -> #####
     await migrateWorkshopAddons(filenamesToWorkshopIds(filenames))
-    emit("scan")
+    onClearPressed()  // clear selection
 }
 
 async function onUnsubscribePressed(filenames: string[]) {
     await unsubscribeAddons(filenamesToWorkshopIds(filenames))
-    emit("scan")
+    onClearPressed() // clear selection
 }
 
 onMounted(() => {
