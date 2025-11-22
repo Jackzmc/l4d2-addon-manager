@@ -5,13 +5,13 @@
             <button class="level-item button " @click="onClearPressed">
                 <Icon icon="erase">Clear Selection</Icon>
             </button>
-            <button class="level-item button is-warning has-tooltip-right" 
+            <button class="level-item button is-link has-tooltip-right" 
                 data-tooltip="Copies workshop files to managed addons and unsubscribes"
                 @click="onMigratePressed(selected)"
             >
                 Move to managed addons
             </button>
-            <button v-if="config.steam_apikey" class="level-item button is-link has-tooltip-right" 
+            <button v-if="config.steam_apikey" class="level-item button is-danger is-outlined has-tooltip-right" 
                 data-tooltip="Unsubscribes addon from workshop"
                 @click="onUnsubscribePressed(selected)">
                 Unsubscribe
