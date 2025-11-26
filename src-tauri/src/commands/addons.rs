@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::__rt::spawn_blocking;
 use std::time::Duration;
 use tauri::{AppHandle, State};
+use tauri_plugin_opener::OpenerExt;
 use crate::modules::migrate::{migrate_workshop, unsubscribe_workshop};
 
 #[tauri::command]
@@ -123,6 +124,7 @@ pub async fn addons_set_state(
     // TODO: test disabling it via addonlist.txt (if it gets overwritten, works). if not then .disabled suffix
     let mut list =
         AddonList::new(&addonslist_path).map_err(|e| format!("failed to check state: {}", e))?;
+    trace!("set enabled={} {:?}", state, filenames);
     let results = filenames
         .into_iter()
         .map(
@@ -155,6 +157,7 @@ pub async fn addons_delete(
         .into_iter()
         .map(|filename| {
             let path = addons_folder.join(&filename);
+            trace!("trashing {:?}", path);
             match trash::delete(&path) {
                 Ok(_) => ItemResult::ok(filename),
                 Err(e) => ItemResult::error(filename, e.to_string()),
@@ -197,4 +200,22 @@ pub async fn addons_tag_del(
     let hash = FileHash::from_str(&id).map_err(|e| format!("bad id: {}", e))?;
     let addons = addons.lock().await;
     addons.del_tag(hash, tag).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn addons_show_file(
+    app: AppHandle,
+    cfg: State<'_, AppConfigContainer>,
+    filename: String,
+    is_workshop: bool
+) -> Result<(), String> {
+    let cfg = cfg.lock().await;
+    let mut path = cfg.addons_folder.clone().ok_or("no addon folder configured")?;
+    if is_workshop {
+        path = path.join("workshop");
+    }
+    path = path.join(filename);
+    app.opener()
+        .open_path(path.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())
 }

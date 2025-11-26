@@ -94,6 +94,7 @@ pub fn run() {
             cmd_addons::addons_delete,
             cmd_addons::addons_tag_add,
             cmd_addons::addons_tag_del,
+            cmd_addons::addons_show_file,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

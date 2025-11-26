@@ -162,3 +162,6 @@ export async function addTag(entryId: string, tag: string) {
 export async function removeTag(entryId: string, tag: string) {
     return await tryInvoke("addons_tag_del", { id: entryId, tag })
 }
+export async function showAddonInFolder(filename: string, isWorkshop = false) {
+    return await tryInvoke("addons_show_file", { filename, isWorkshop })
+}

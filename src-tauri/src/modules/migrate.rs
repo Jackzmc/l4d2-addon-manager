@@ -34,7 +34,7 @@ pub fn migrate_workshop(app: AppHandle, ids: Vec<i64>) -> Result<Vec<ItemResult>
                 return ItemResult::error(filename, e.to_string());
             }
             if can_unsubscribe {
-                trace!("performing unsubscribe");
+                trace!("unsubscribe {:?}", id);
                 if let Err(e) = steam.unsubscribe(&id.to_string()) {
                     return ItemResult::error(filename, e.to_string());
                 }
@@ -68,6 +68,7 @@ pub fn unsubscribe_workshop(app: AppHandle, ids: Vec<i64>) -> Result<Vec<ItemRes
         .into_iter()
         .map(|id| {
             let id = id.to_string();
+            trace!("unsubscribing {:?}", id);
             if let Err(e) = steam.unsubscribe(&id) {
                 return ItemResult::error(id, e.to_string());
             }

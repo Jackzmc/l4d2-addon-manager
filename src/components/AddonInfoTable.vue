@@ -6,7 +6,7 @@
             <td v-if="props.entry.enabled" class="">
                 <span class="tag is-success has-text-white is-clickable has-tooltip-bottom has-tooltip-danger" 
                     data-tooltip="Click to disable addon"
-                    @click="emit('set-state', true)"
+                    @click="emit('set-state', false)"
                 >
                     <Icon icon="check-circle-solid">Enabled</Icon>
                 </span>
@@ -25,6 +25,7 @@
             <td><b>Filename</b></td>
             <td v-if="props.entry.info.filename">
                 <code>{{ props.entry.info.filename }}</code>
+                <span class="ml-2"><a @click="openFile">(Open file)</a></span>
             </td>
             <td v-else class="has-text-danger">
                 Missing <em>(cannot find file, was it renamed or deleted?)</em>
@@ -105,7 +106,7 @@ import { formatSize } from '../js/utils.ts';
 import { AddonEntry } from '../types/Addon.ts';
 import { getRelDate } from '../js/utils';
 import { getAddonContents } from '../js/app.ts';
-import { addTag, removeTag } from '../js/tauri.ts';
+import { addTag, removeTag, showAddonInFolder } from '../js/tauri.ts';
 import Icon from './Icon.vue';
 
 const emit = defineEmits(["refresh", "set-state"])
@@ -141,5 +142,9 @@ async function onAddTagPressed() {
 async function onDelTagPressed(tag: string) {
     await removeTag(props.entry.id, tag)
     emit("refresh")
+}
+
+async function openFile() {
+    await showAddonInFolder(props.entry.info.filename, false)
 }
 </script>

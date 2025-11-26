@@ -405,6 +405,7 @@ impl AddonStorage {
 
     pub async fn delete_filenames(&self, filenames: Vec<String>) -> Result<(), sqlx::Error> {
         let params = format!("?{}", ", ?".repeat(filenames.len() - 1));
+        debug!("removing files: {:?}", filenames);
         // dynamically add ?, ?, ?... to number of filenames
         let mut query = sqlx::query(AssertSqlSafe(format!(
             "DELETE FROM addons WHERE filename IN ({})",
