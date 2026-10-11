@@ -145,6 +145,6 @@ async function onDelTagPressed(tag: string) {
 }
 
 async function openFile() {
-    await showAddonInFolder(props.entry.info.filename, false)
+    await showAddonInFolder(props.entry.info.filename, props.workshop)
 }
 </script>
